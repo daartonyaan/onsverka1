@@ -1,0 +1,1418 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Онлайн-сверка — итоговый прототип модуля Диадока для 1С</title>
+  <meta name="description" content="Интерактивный прототип Онлайн-сверки внутри модуля Контур.Диадок для 1С.">
+  <style>
+    :root{
+      --ui-font:Arial,"Segoe UI",sans-serif;
+      --app-bg:#eef0f3;
+      --surface:#fff;
+      --surface-2:#f6f7f8;
+      --surface-3:#e8ebef;
+      --line:#c5c9ce;
+      --line-soft:#dde0e4;
+      --text:#25272a;
+      --muted:#656a70;
+      --link:#1769aa;
+      --link-hover:#0c4f86;
+      --select:#fff3bf;
+      --select-strong:#f8e58a;
+      --yellow:#f4d96b;
+      --yellow-hover:#efd052;
+      --yellow-line:#c7ad44;
+      --ok:#2f7d46;
+      --ok-bg:#e8f3ea;
+      --warn:#986711;
+      --warn-bg:#fff4d7;
+      --danger:#a43b36;
+      --danger-bg:#fbe8e6;
+      --shadow:0 8px 28px rgba(36,42,48,.22);
+      --radius:3px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;overflow:hidden;background:var(--app-bg);color:var(--text);font:12px/1.32 var(--ui-font);-webkit-font-smoothing:antialiased}
+    button,input,select,textarea{font:inherit;color:inherit}
+    button{cursor:pointer}
+    button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid #3489ca;outline-offset:1px}
+    a,.link{color:var(--link);text-decoration:none}
+    a:hover,.link:hover{color:var(--link-hover);text-decoration:underline}
+    .hidden{display:none!important}
+
+    /* Каркас 1С */
+    .application{display:grid;height:100vh;grid-template-rows:38px 38px 1fr 24px;background:var(--app-bg)}
+    .global-bar{display:flex;align-items:center;gap:9px;border-bottom:1px solid #c9b75f;background:#f5df83;padding:0 10px;color:#28230d}
+    .app-logo{display:grid;width:36px;height:26px;place-items:center;border:1px solid rgba(86,72,13,.38);border-radius:2px;background:#fff7cf;font-weight:800;letter-spacing:-1px}
+    .global-title{font-weight:700;white-space:nowrap}
+    .global-spacer{flex:1}
+    .global-icon{display:grid;width:28px;height:28px;place-items:center;border:1px solid transparent;border-radius:2px;background:transparent;color:#4f471f}
+    .global-icon:hover{border-color:#c2ad4d;background:#fff0a9}
+    .global-search{display:flex;width:min(320px,28vw);height:27px;align-items:center;border:1px solid #baa64a;border-radius:2px;background:#fff9d8;padding:0 7px;gap:5px}
+    .global-search input{min-width:0;flex:1;border:0;outline:0;background:transparent;font-size:12px}
+    .user-button{display:flex;height:29px;align-items:center;gap:7px;border:1px solid transparent;border-radius:2px;background:transparent;padding:0 7px}
+    .user-button:hover{border-color:#c2ad4d;background:#fff0a9}
+    .user-avatar{display:grid;width:20px;height:20px;place-items:center;border-radius:50%;background:#74682c;color:#fff;font-size:9px;font-weight:700}
+
+    .section-bar{display:flex;min-width:0;align-items:stretch;border-bottom:1px solid var(--line);background:#fafafa;padding:0 8px}
+    .section-tab{display:flex;align-items:center;border:0;border-right:1px solid #e3e3e3;background:transparent;padding:0 14px;color:#45484b;white-space:nowrap}
+    .section-tab:hover{background:#f0f1f2}
+    .section-tab.active{border-bottom:3px solid #c6a91e;background:#fff;color:#1f2123;font-weight:700}
+    .section-tab.compact{padding:0 10px}
+
+    .shell{display:grid;min-height:0;grid-template-columns:206px minmax(0,1fr)}
+    .function-panel{display:flex;min-height:0;flex-direction:column;border-right:1px solid var(--line);background:#f5f6f7}
+    .function-title{padding:16px 14px 8px;color:#6d7176;font-size:11px;font-weight:700;text-transform:uppercase}
+    .function-panel nav{display:grid;padding:0 5px;gap:2px}
+    .nav-link{display:flex;min-height:32px;align-items:center;gap:8px;border:0;border-radius:2px;background:transparent;padding:0 9px;text-align:left}
+    .nav-link:hover{background:#e8eaed}
+    .nav-link.active{background:#dce8f2;color:#174c77;font-weight:700}
+    .nav-icon{display:grid;width:18px;height:18px;place-items:center;color:#5d636a;font-size:12px}
+    .panel-info{margin:auto 10px 10px;border-top:1px solid var(--line-soft);padding:10px 4px 0;color:var(--muted);font-size:11px;line-height:1.5}
+    .panel-info b{display:block;color:#42464a;font-size:12px}
+
+    .workspace{position:relative;min-width:0;min-height:0;overflow:auto;background:#fff}
+    .form-tabs{position:sticky;z-index:8;top:0;display:flex;height:31px;align-items:flex-end;border-bottom:1px solid var(--line);background:#e8eaed;padding-left:7px}
+    .form-tab{display:flex;height:27px;max-width:360px;align-items:center;gap:8px;border:1px solid var(--line);border-bottom:0;border-radius:3px 3px 0 0;background:#f2f3f4;padding:0 10px;color:#4c5055}
+    .form-tab.active{height:29px;background:#fff;color:#232528;font-weight:700}
+    .form-tab span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .tab-close{border:0;background:transparent;color:#777;padding:0 2px;font-size:15px}
+    #content{min-width:850px;padding:15px 18px 42px}
+    .status-bar{display:flex;align-items:center;gap:14px;border-top:1px solid var(--line);background:#eceef0;padding:0 9px;color:#555b61;font-size:11px}
+    .status-bar .ready{color:var(--ok)}
+    .status-spacer{flex:1}
+
+    /* Стандартные элементы формы */
+    h1{margin:0;font-size:22px;line-height:1.2;font-weight:400}
+    h2{margin:0;font-size:16px;font-weight:700}
+    h3{margin:0;font-size:13px;font-weight:700}
+    p{margin:0}
+    .form-heading{display:flex;min-height:34px;align-items:center;gap:8px;margin-bottom:7px}
+    .form-heading .favorite{border:0;background:transparent;color:#a88200;font-size:20px;line-height:1}
+    .breadcrumb{margin-left:auto;color:var(--muted);font-size:11px}
+
+    .command-bar{display:flex;min-height:36px;align-items:center;gap:6px;border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);background:#f5f6f7;padding:4px 5px;margin:0 0 10px}
+    .command-separator{width:1px;height:22px;margin:0 2px;background:#d2d5d8}
+    .cmd{display:inline-flex;min-height:27px;align-items:center;justify-content:center;gap:6px;border:1px solid #b9bdc2;border-radius:var(--radius);background:linear-gradient(#fff,#f1f2f3);padding:0 10px;white-space:nowrap}
+    .cmd:hover{background:#fff}
+    .cmd.primary{border-color:var(--yellow-line);background:linear-gradient(#ffe98a,#f2d35a);font-weight:700}
+    .cmd.primary:hover{background:#ffe889}
+    .cmd.flat{border-color:transparent;background:transparent}
+    .cmd.flat:hover{border-color:#c7cbd0;background:#fff}
+    .cmd.linklike{border-color:transparent;background:transparent;color:var(--link)}
+    .cmd.linklike:hover{text-decoration:underline}
+    .cmd:disabled{cursor:default;opacity:.55}
+    .cmd .ico{width:14px;color:#5b6268;text-align:center}
+    .cmd.primary .ico{color:#5c4b00}
+
+    .params{display:grid;align-items:end;margin-bottom:8px;gap:7px 12px;grid-template-columns:108px minmax(230px,1.3fr) 66px 116px 88px minmax(220px,1fr) auto}
+    .field-label{align-self:center;text-align:right;color:#484c50}
+    .field{position:relative;display:flex;height:28px;min-width:0;align-items:center;border:1px solid #aeb3b8;border-radius:2px;background:#fff}
+    .field:focus-within{border-color:#3984bd;box-shadow:0 0 0 1px #9bc5e5}
+    .field input,.field select{min-width:0;height:26px;flex:1;border:0;outline:0;background:transparent;padding:0 7px}
+    .field select{appearance:none;padding-right:26px}
+    .field-button{display:grid;width:25px;height:25px;place-items:center;border:0;border-left:1px solid #d2d5d8;background:#f4f5f6;color:#5d6369}
+    .field-button:hover{background:#e7e9eb}
+    .check-field{display:flex;min-height:28px;align-items:center;gap:6px;white-space:nowrap}
+    .check-field input{accent-color:#2d79b0}
+    .params-advanced{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding-left:120px;color:#666b70;font-size:12px}
+    .params-advanced button{border:0;background:transparent;color:var(--link);padding:0}
+
+    .info-group{margin:8px 0 10px;border:1px solid var(--line);border-radius:2px;background:#fff}
+    .info-group-title{display:flex;min-height:28px;align-items:center;gap:7px;border-bottom:1px solid var(--line-soft);background:#f5f6f7;padding:0 8px;font-weight:700}
+    .info-group-title button{border:0;background:transparent;padding:0;color:#4f555b}
+    .source-state{display:grid;grid-template-columns:160px minmax(260px,1fr) 190px minmax(240px,1fr);gap:0;border-bottom:1px solid var(--line-soft)}
+    .source-state:last-child{border-bottom:0}
+    .source-state>*{min-height:31px;padding:7px 9px;border-right:1px solid var(--line-soft)}
+    .source-state>*:last-child{border-right:0}
+    .source-state .label{background:#fafafa;color:#575c61}
+    .state-ok{color:var(--ok)}
+    .state-warn{color:var(--warn)}
+
+    .totals{display:grid;margin:8px 0 9px;border:1px solid var(--line);background:#fafafa;grid-template-columns:repeat(5,minmax(130px,1fr))}
+    .total-cell{min-height:52px;border-right:1px solid var(--line);padding:7px 10px}
+    .total-cell:last-child{border-right:0}
+    .total-cell span{display:block;color:var(--muted);font-size:11px}
+    .total-cell b{display:block;margin-top:3px;font-size:16px;font-weight:400}
+    .total-cell strong{font-size:17px}
+    .total-cell.warn b{color:var(--warn);font-weight:700}
+    .total-cell.ok b{color:var(--ok);font-weight:700}
+
+    .report-tools{display:flex;align-items:center;gap:7px;margin:5px 0}
+    .report-tools .label{margin-right:2px;color:#555a60}
+    .segment{display:flex}
+    .segment button{min-height:26px;border:1px solid #b8bdc2;border-right:0;background:#fff;padding:0 9px}
+    .segment button:first-child{border-radius:2px 0 0 2px}
+    .segment button:last-child{border-right:1px solid #b8bdc2;border-radius:0 2px 2px 0}
+    .segment button.active{background:var(--select-strong);color:#164d77;font-weight:700}
+    .mini-search{display:flex;width:240px;height:27px;align-items:center;margin-left:auto;border:1px solid #b4b9be;background:#fff;padding:0 6px;gap:5px}
+    .mini-search input{min-width:0;flex:1;border:0;outline:0}
+
+    .table-box{border:1px solid #aeb3b8;background:#fff;overflow:auto}
+    table{width:100%;border-collapse:collapse}
+    .data-table{min-width:1050px;font-size:12px}
+    .data-table th{position:sticky;z-index:2;top:0;height:38px;border-right:1px solid #bfc4c8;border-bottom:1px solid #aeb3b8;background:linear-gradient(#f8f9fa,#e8eaec);padding:4px 7px;color:#3e4348;text-align:left;font-weight:400;white-space:normal}
+    .data-table th:last-child{border-right:0}
+    .data-table td{height:32px;border-right:1px solid #e0e2e4;border-bottom:1px solid #d9dcdf;padding:4px 7px;vertical-align:middle}
+    .data-table td:last-child{border-right:0}
+    .data-table tbody tr:hover>td{background:#f2f7fb}
+    .data-table tbody tr.selected>td{background:var(--select)}
+    .data-table .num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+    .data-table .center{text-align:center}
+    .data-table .muted{color:var(--muted)}
+    .tree-cell{display:flex;min-width:245px;align-items:center;gap:5px}
+    .tree-toggle{display:grid;width:17px;height:19px;flex:0 0 auto;place-items:center;border:0;background:transparent;color:#4f555b;font-size:11px}
+    .tree-indent{width:23px;flex:0 0 auto}
+    .company-link,.doc-link{border:0;background:transparent;color:var(--link);padding:0;text-align:left}
+    .company-link:hover,.doc-link:hover{text-decoration:underline}
+    .question-row td{background:#fcfcfc;color:#4d5257}
+    .question-row .tree-cell{padding-left:20px}
+    .question-row.open td:first-child{box-shadow:inset 3px 0 0 #d09929}
+    .question-row.resolved td:first-child{box-shadow:inset 3px 0 0 #4c9561}
+    .status{display:inline-flex;min-height:20px;align-items:center;gap:5px;border:1px solid transparent;border-radius:10px;padding:1px 7px;white-space:nowrap;font-size:11px}
+    .status.warn{border-color:#e1c982;background:var(--warn-bg);color:#78520e}
+    .status.danger{border-color:#e2a8a3;background:var(--danger-bg);color:#87322e}
+    .status.ok{border-color:#acd0b4;background:var(--ok-bg);color:#246537}
+    .status.neutral{border-color:#c9cdd1;background:#f3f4f5;color:#555b60}
+    .small-note{margin-top:5px;color:var(--muted);font-size:11px}
+
+    /* Детальная форма */
+    .detail-headline{display:flex;align-items:flex-start;gap:16px;margin:0 0 8px}
+    .back-link{display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;color:var(--link);padding:5px 0}
+    .detail-title{flex:1}
+    .detail-title h1{margin-bottom:3px}
+    .detail-title p{color:var(--muted);font-size:12px}
+    .compact-fields{display:grid;grid-template-columns:96px minmax(260px,1fr) 72px minmax(180px,.7fr);gap:7px 10px;margin:8px 0 9px;align-items:center}
+    .compact-fields .field-label{text-align:right}
+    .read-field{min-height:27px;border:1px solid #c1c5c9;background:#f8f8f8;padding:5px 7px}
+    .notification{display:flex;align-items:flex-start;gap:9px;border:1px solid #d7bd6c;background:#fff7dc;padding:8px 10px;margin:7px 0}
+    .notification.ok{border-color:#a9cab1;background:#edf6ef}
+    .notification.danger{border-color:#d8a09b;background:#fcebea}
+    .notification-icon{display:grid;width:19px;height:19px;flex:0 0 auto;place-items:center;border-radius:50%;background:#b98118;color:#fff;font-size:11px;font-weight:700}
+    .notification.ok .notification-icon{background:var(--ok)}
+    .notification.danger .notification-icon{background:var(--danger)}
+    .notification b{display:block;margin-bottom:2px}
+    .notification p{color:#555b60;font-size:12px}
+    .form-pages{display:flex;height:31px;align-items:flex-end;border-bottom:1px solid #aeb3b8;margin:9px 0 0;padding-left:5px}
+    .page-tab{height:28px;border:1px solid transparent;border-bottom:0;background:transparent;padding:0 12px;color:#51565b}
+    .page-tab:hover{background:#f3f4f5}
+    .page-tab.active{border-color:#aeb3b8;background:#fff;color:#232629;font-weight:700}
+    .page-body{padding-top:8px}
+    .section-actions{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+    .section-actions .right{margin-left:auto}
+    .empty-state{display:grid;min-height:180px;place-items:center;text-align:center;color:#5e6469}
+    .empty-state b{display:block;margin-bottom:5px;color:var(--ok);font-size:15px}
+
+    .act-layout{display:grid;grid-template-columns:minmax(700px,1fr) 250px;gap:13px}
+    .act-sheet{border:1px solid #9fa4a9;background:#fff;padding:22px 28px;box-shadow:0 2px 8px rgba(30,35,40,.08)}
+    .act-sheet header{text-align:center}
+    .act-sheet h2{font-size:17px}
+    .act-sheet header p{margin-top:3px;color:#555}
+    .act-sheet table{margin-top:17px;font-size:11px}
+    .act-sheet th,.act-sheet td{border:1px solid #777;padding:5px 6px;text-align:left}
+    .act-sheet .num{text-align:right}
+    .act-sheet .act-total{font-weight:700}
+    .act-conclusion{margin:16px 0;line-height:1.55}
+    .signatures{display:grid;margin-top:30px;grid-template-columns:1fr 1fr;gap:34px}
+    .signature-line{margin-top:25px;border-top:1px solid #666;padding-top:3px;color:#777;font-size:10px}
+    .act-side{border:1px solid var(--line);background:#f7f8f9;padding:10px}
+    .act-side h3{margin-bottom:8px}
+    .act-side dl{margin:0}
+    .act-side dt{margin-top:9px;color:var(--muted);font-size:11px}
+    .act-side dd{margin:2px 0 0}
+
+    /* Диалоги */
+    .overlay{position:fixed;z-index:50;inset:0;display:grid;place-items:center;background:rgba(30,34,38,.32);padding:24px}
+    .dialog{display:flex;width:min(900px,calc(100vw - 48px));max-height:calc(100vh - 48px);flex-direction:column;border:1px solid #858b91;border-radius:3px;background:#fff;box-shadow:var(--shadow)}
+    .dialog.small{width:min(560px,calc(100vw - 48px))}
+    .dialog-title{display:flex;min-height:38px;align-items:center;gap:8px;border-bottom:1px solid #b7bbc0;background:#e9ebed;padding:0 10px}
+    .dialog-title h2{flex:1;font-size:14px}
+    .dialog-close{display:grid;width:26px;height:25px;place-items:center;border:1px solid transparent;background:transparent;font-size:18px}
+    .dialog-close:hover{border-color:#b8bdc2;background:#fff}
+    .dialog-body{min-height:0;overflow:auto;padding:12px}
+    .dialog-footer{display:flex;min-height:45px;align-items:center;justify-content:flex-end;gap:7px;border-top:1px solid #c6cace;background:#f4f5f6;padding:6px 9px;flex-wrap:wrap}
+    .dialog-footer .footer-note{margin-right:auto;color:#6a6f74;font-size:11px}
+    .dialog-group{margin-bottom:12px;border:1px solid #c3c7cb}
+    .dialog-group-title{min-height:27px;border-bottom:1px solid #d3d6d9;background:#f4f5f6;padding:5px 8px;font-weight:700}
+    .dialog-group-content{padding:9px}
+    .finding{display:grid;grid-template-columns:125px 1fr;gap:6px 10px}
+    .finding dt{color:#62676c}
+    .finding dd{margin:0}
+    .comparison{font-size:12px}
+    .comparison th,.comparison td{border:1px solid #c4c8cc;padding:6px 8px;text-align:left}
+    .comparison th{background:#f2f3f4;font-weight:400}
+    .comparison td strong{display:block}
+    .recommendation{display:flex;gap:8px;border-left:3px solid #c79521;background:#fff9e7;padding:8px 9px}
+    .comment-label{display:block;margin-bottom:4px;color:#50555a}
+    textarea{width:100%;min-height:66px;resize:vertical;border:1px solid #adb2b7;padding:6px 7px}
+    textarea.error{border-color:var(--danger);background:#fff7f6}
+    .validation{display:none;margin-top:4px;color:var(--danger);font-size:11px}
+    .validation.visible{display:block}
+    .result-box{border-left:3px solid var(--ok);background:#eef7f0;padding:8px 10px}
+    .result-box.pending{border-left-color:#c18a22;background:#fff8e5}
+    .result-box b{display:block;margin-bottom:3px}
+    .radio-list{display:grid;gap:8px}
+    .radio-list label{display:flex;align-items:flex-start;gap:7px}
+    .radio-list input{margin-top:2px;accent-color:#2c76aa}
+    .progress{height:8px;border:1px solid #afb4b9;background:#fff;overflow:hidden}
+    .progress i{display:block;width:0;height:100%;background:#5a96c2;transition:width .35s}
+    .sync-steps{display:grid;margin:10px 0;gap:6px}
+    .sync-step{display:flex;align-items:center;gap:8px;border:1px solid #d0d3d6;background:#fafafa;padding:7px 8px}
+    .sync-step .step-icon{display:grid;width:21px;height:21px;place-items:center;border-radius:50%;background:#dfe3e6;color:#555;font-size:10px}
+    .sync-step.processing{background:#f1f7fc}
+    .sync-step.processing .step-icon{background:#4c8dbb;color:#fff}
+    .sync-step.done .step-icon{background:var(--ok);color:#fff}
+    .sync-step div{flex:1}
+    .sync-step b,.sync-step small{display:block}
+    .sync-step small{color:var(--muted)}
+    .choice-search{display:flex;height:29px;align-items:center;gap:6px;border:1px solid #adb2b7;background:#fff;padding:0 7px;margin-bottom:8px}
+    .choice-search input{min-width:0;flex:1;border:0;outline:0;background:transparent}
+    .choice-table-box{max-height:370px;overflow:auto;border:1px solid #aeb3b8}
+    .choice-table-box .data-table{min-width:680px}
+    .choice-table-box .data-table th{top:0}
+    .choice-empty{display:none;padding:18px;color:var(--muted);text-align:center}
+    .choice-empty.visible{display:block}
+
+    .more-menu{position:fixed;z-index:30;min-width:235px;border:1px solid #8f959a;border-radius:2px;background:#fff;box-shadow:0 5px 18px rgba(30,35,40,.2);padding:4px}
+    .more-menu button{display:block;width:100%;min-height:29px;border:0;background:transparent;padding:0 9px;text-align:left}
+    .more-menu button:hover{background:var(--select)}
+    .menu-separator{height:1px;margin:4px;background:#dddfe2}
+    .toast{position:fixed;z-index:80;right:18px;bottom:38px;display:flex;max-width:430px;align-items:flex-start;gap:8px;border:1px solid #8d949a;border-radius:2px;background:#fff;padding:10px 12px;box-shadow:var(--shadow)}
+    .toast-icon{display:grid;width:19px;height:19px;flex:0 0 auto;place-items:center;border-radius:50%;background:var(--ok);color:#fff;font-size:11px;font-weight:700}
+    .toast.warn .toast-icon{background:var(--warn)}
+    .toast b{display:block;margin-bottom:2px}
+    .toast small{display:block;color:var(--muted)}
+
+    /* Визуальная модель управляемой формы модуля Диадока для 1С */
+    .application{grid-template-rows:34px 1fr 22px;background:#e9eaec}
+    .global-bar{gap:7px;border-bottom:1px solid #b8bbc0;background:#f0d66c;padding:0 7px}
+    .app-logo{width:32px;height:23px;border-color:#b49a2d;background:#fff8cf;font-size:12px}
+    .global-title{font-size:12px}
+    .global-context{color:#5f5527;font-size:11px}
+    .global-icon{width:25px;height:24px}
+    .user-button{height:25px;padding:0 6px;font-size:11px}
+    .user-avatar{width:18px;height:18px;font-size:8px}
+    .shell{display:block;min-height:0}
+    .workspace{display:grid;height:100%;grid-template-rows:30px 37px minmax(0,1fr);overflow:hidden;background:#fff}
+    .module-titlebar{display:flex;align-items:center;gap:5px;border-bottom:1px solid #c5c8cc;background:#f5f5f5;padding:0 7px;color:#303336}
+    .module-titlebar strong{font-weight:700}
+    .module-titlebar .module-caption{margin-left:3px;color:#676b70;font-size:11px}
+    .module-titlebar .module-spacer,.module-toolbar .module-spacer{flex:1}
+    .module-mini{display:grid;width:23px;height:22px;place-items:center;border:1px solid transparent;background:transparent;color:#555b60}
+    .module-mini:hover{border-color:#b9bdc1;background:#fff}
+    .module-toolbar{display:flex;min-width:0;align-items:center;gap:5px;border-bottom:1px solid #aeb2b6;background:#f7f7f7;padding:4px 7px}
+    .module-exchange{display:inline-flex;height:27px;align-items:center;gap:6px;border:1px solid #89a47e;border-radius:2px;background:linear-gradient(#e6f2df,#cfe5c7);padding:0 10px;color:#34472f;font-weight:700}
+    .module-exchange:hover{background:#eaf6e4}
+    .module-period{display:inline-flex;height:27px;align-items:center;gap:5px;border:1px solid #b9bdc1;border-radius:2px;background:linear-gradient(#fff,#eeeeef);padding:0 8px;white-space:nowrap}
+    .module-switches{display:flex;height:27px;margin-left:3px}
+    .module-switches button{border:1px solid #b9bdc1;border-right:0;background:#fff;padding:0 10px;white-space:nowrap}
+    .module-switches button:first-child{border-radius:2px 0 0 2px}
+    .module-switches button:last-child{border-right:1px solid #b9bdc1;border-radius:0 2px 2px 0}
+    .module-switches button:hover{background:#fff9dd}
+    .module-switches button.active{background:#f5df76;color:#332d12;font-weight:700;box-shadow:inset 0 -2px 0 #b99518}
+    .module-org{max-width:220px;overflow:hidden;color:#5f6469;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+    #content{min-width:900px;overflow:auto;padding:9px 12px 34px}
+    h1{font-size:18px}
+    h2{font-size:14px}
+    .form-heading{min-height:27px;margin-bottom:4px}
+    .form-heading .favorite{font-size:17px}
+    .breadcrumb{font-size:10px}
+    .command-bar{min-height:31px;gap:4px;margin-bottom:7px;padding:2px 4px;background:#f4f4f4}
+    .command-separator{height:19px}
+    .cmd{min-height:24px;padding:0 8px;font-size:11px}
+    .params{margin-bottom:5px;gap:5px 9px;grid-template-columns:92px minmax(230px,1fr) 76px minmax(250px,1.25fr) auto}
+    .field{height:25px}
+    .field input,.field select{height:23px;padding:0 5px;font-size:11px}
+    .field-button{width:23px;height:23px}
+    .params-advanced{padding-left:101px;font-size:11px}
+    .info-group{margin:5px 0 7px}
+    .info-group-title{min-height:25px;padding:0 6px;background:#efefef}
+    .source-state>*{min-height:27px;padding:5px 7px}
+    .totals{margin:6px 0 7px}
+    .total-cell{min-height:43px;padding:5px 8px}
+    .total-cell span{font-size:10px}
+    .total-cell b{margin-top:2px;font-size:14px}
+    .total-cell strong{font-size:15px}
+    .report-tools{margin:4px 0}
+    .segment button{min-height:23px;padding:0 7px;font-size:11px}
+    .mini-search{width:270px;height:24px;font-size:11px}
+    .data-table{font-size:11px}
+    .data-table th{height:31px;padding:3px 6px;background:linear-gradient(#f6f6f6,#e4e5e6)}
+    .data-table td{height:27px;padding:3px 6px}
+    .data-table tbody tr:hover>td{background:#fff9dc}
+    .status{min-height:18px;border-radius:2px;padding:1px 5px;font-size:10px}
+    .status.warn{border-color:#dbc66c;background:#fff5c9}
+    .status.danger{border-color:#deb1ad;background:#f9e9e7}
+    .status.ok{border-color:#b4ccb3;background:#edf4e9}
+    .status.neutral{border-color:#c9cdd1;background:#efefef}
+    .small-note{font-size:10px}
+    .detail-headline{margin-bottom:5px}
+    .detail-title h1{margin-bottom:1px}
+    .compact-fields{gap:5px 8px;margin:5px 0 6px}
+    .read-field{min-height:24px;padding:4px 6px;font-size:11px}
+    .notification{gap:7px;margin:5px 0;padding:6px 8px}
+    .notification-icon{width:17px;height:17px}
+    .notification p{font-size:11px}
+    .form-pages{height:28px;margin-top:6px}
+    .page-tab{height:25px;padding:0 10px;font-size:11px}
+    .page-body{padding-top:6px}
+    .dialog{border-radius:0}
+    .dialog-title{min-height:33px;background:#ededed}
+    .dialog-title h2{font-size:12px}
+    .dialog-body{padding:9px}
+    .dialog-footer{min-height:39px;padding:5px 7px}
+    .dialog-group{margin-bottom:8px}
+    .dialog-group-title{min-height:24px;padding:4px 7px;background:#efefef}
+    .dialog-group-content{padding:7px}
+    .act-layout{display:block}
+    .act-sheet{border:1px solid #aeb2b6;padding:16px 20px;box-shadow:none}
+    .act-sheet h2{font-size:14px}
+    .act-sheet table{margin-top:12px;font-size:10px}
+    .act-side{margin-bottom:7px;padding:7px 8px;background:#f3f3f3}
+    .act-side h3{margin-bottom:6px}
+    .act-side dl{display:grid;grid-template-columns:110px minmax(160px,1fr) 110px minmax(160px,1fr);gap:4px 8px;align-items:center}
+    .act-side dt,.act-side dd{margin:0}
+    .status-bar{gap:11px;padding:0 7px;font-size:10px}
+
+    @media (max-width:1180px){
+      .module-org{display:none}
+      .module-switches button{padding:0 7px}
+      .params{grid-template-columns:92px minmax(210px,1fr) 76px minmax(220px,1fr) auto}
+      .act-side dl{grid-template-columns:100px 1fr 100px 1fr}
+    }
+    @media (max-width:900px){
+      .global-context,.module-period{display:none}
+      #content{min-width:760px}
+      .module-switches button{padding:0 5px;font-size:10px}
+      .act-side dl{grid-template-columns:100px 1fr}
+    }
+    @media print{
+      body{overflow:visible;background:#fff}.global-bar,.module-titlebar,.module-toolbar,.status-bar,.command-bar,.form-pages,.act-side,.back-link{display:none!important}
+      .application,.shell{display:block;height:auto}.workspace{overflow:visible}.act-layout{display:block}.act-sheet{border:0;box-shadow:none;padding:0}#content{min-width:0;padding:0}
+    }
+
+    /* Итоговая версия: оболочка и паттерны реального модуля Диадока для 1С */
+    .application{grid-template-rows:34px 27px minmax(0,1fr) 22px}
+    .open-tabs{display:flex;min-width:0;align-items:flex-end;border-bottom:1px solid #afb3b7;background:#ececec;padding-left:7px;overflow:hidden}
+    .open-tab{display:flex;height:24px;max-width:330px;align-items:center;gap:7px;border:1px solid #bfc2c5;border-bottom:0;background:#f4f4f4;padding:0 9px;color:#4b4f53;white-space:nowrap}
+    .open-tab span{overflow:hidden;text-overflow:ellipsis}
+    .open-tab.active{height:26px;background:#fff;font-weight:700;color:#222}
+    .open-tab .close{border:0;background:transparent;padding:0;color:#777}
+    .shell{display:grid;min-height:0;grid-template-columns:205px minmax(0,1fr)}
+    .side-nav{min-height:0;overflow:auto;border-right:1px solid #c8bc78;background:#fff0a8;padding:6px 0}
+    .side-home{display:flex;height:31px;align-items:center;gap:8px;border:0;background:transparent;padding:0 15px;font-weight:700;text-align:left}
+    .side-list{display:grid;margin-top:2px}
+    .side-item{display:flex;min-height:31px;align-items:center;gap:9px;border:0;background:transparent;padding:5px 12px;text-align:left;color:#4b482f}
+    .side-item:hover{background:#fff7d0}
+    .side-item.active{background:#f2d86f;color:#27230f;font-weight:700}
+    .side-icon{display:grid;width:18px;flex:0 0 18px;place-items:center;color:#5b6b70}
+    .workspace{grid-template-rows:39px minmax(0,1fr)}
+    .workspace.inner-form{grid-template-rows:39px minmax(0,1fr)}
+    .workspace.inner-form .module-toolbar{display:none}
+    .module-titlebar{background:#fff;padding:0 10px}
+    .module-titlebar strong{font-size:17px}
+    .module-titlebar .module-caption{font-size:12px}
+    .module-toolbar{background:#f8f8f8;padding:5px 9px}
+    .module-switches{margin-left:10px}
+    .module-switches button{min-width:92px}
+    #content{min-width:980px;padding:10px 12px 36px}
+    .source-state{grid-template-columns:160px minmax(360px,1fr) 210px}
+    .source-action{display:flex;align-items:center;justify-content:flex-end;gap:8px}
+    .source-action small{color:var(--muted)}
+    .source-summary{display:flex;min-height:30px;align-items:center;border-top:1px solid var(--line-soft);background:#fafafa;padding:6px 9px;color:var(--muted);font-size:11px}
+    .inline-spinner{display:inline-block;width:13px;height:13px;border:2px solid #c5c9cd;border-top-color:#397eae;border-radius:50%;animation:spin .75s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .params{grid-template-columns:88px minmax(220px,1fr) 55px minmax(160px,.65fr) 90px minmax(240px,1fr)}
+    .params-advanced{padding-left:97px}
+    .run-state{display:flex;align-items:center;gap:7px;margin-left:auto;color:#666;font-size:11px}
+    .state-error{color:var(--danger)}
+    .summary-line{display:flex;min-height:35px;align-items:center;border:1px solid #bfc3c7;background:#fafafa;margin:6px 0}
+    .summary-item{display:flex;min-height:35px;align-items:center;gap:5px;border-right:1px solid #d6d8da;padding:0 10px;white-space:nowrap}
+    .summary-item:last-child{border-right:0}
+    .summary-item b{font-size:13px}
+    .summary-item.attention b{color:#8c5e0b}
+    .summary-item.ok b{color:#2e7442}
+    .summary-item.period{margin-left:auto}
+    .direction{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+    .direction.in{color:#276a98}.direction.out{color:#77559b}
+    .action-cell{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+    .inline-action{border:0;background:transparent;color:var(--link);padding:0;text-align:left}
+    .inline-action:hover{text-decoration:underline}
+    .contract-row td{background:#f0f1f2!important;font-weight:700}
+    .contract-indent{padding-left:25px!important}
+    .role-row td{background:#e7edf2!important;font-weight:700;color:#29485f}
+    .role-indent{padding-left:24px!important}
+    .contract-indent.deep{padding-left:47px!important;font-weight:400}
+    .role-cards{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:8px;margin:6px 0 8px}
+    .role-cards.single{grid-template-columns:minmax(280px,620px)}
+    .role-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;border:1px solid #b9bdc2;background:#f7f8f9;padding:9px 10px;text-align:left}
+    .role-card:hover{background:#fff9dc}
+    .role-card.active{border-color:#b29219;background:#fff3b5;box-shadow:inset 3px 0 0 #c4a116}
+    .role-card h3{display:flex;align-items:center;gap:6px;margin-bottom:3px;font-size:13px}
+    .role-card p{color:#5e646a;font-size:11px}
+    .role-card .role-metrics{display:flex;gap:12px;margin-top:7px;color:#444b51;font-size:11px;flex-wrap:wrap}
+    .role-card .role-balance{align-self:center;text-align:right;white-space:nowrap}
+    .role-card .role-balance b{display:block;font-size:15px;font-weight:400}
+    .role-badge{display:inline-flex;min-height:18px;align-items:center;border:1px solid #aab8c3;background:#edf3f7;padding:1px 5px;color:#365b74;font-size:10px}
+    .contract-choice{display:flex;align-items:center;gap:6px;min-width:0}
+    .contract-choice select{width:100%;height:24px;border:1px solid #aeb3b8;background:#fff;padding:0 5px;font-size:11px}
+    .check-list{display:grid;border:1px solid #c5c9cd}
+    .check-row{display:grid;grid-template-columns:24px minmax(240px,1fr) 160px;align-items:center;border-bottom:1px solid #dfe1e3;padding:6px 8px}
+    .check-row:last-child{border-bottom:0}
+    .check-mark{display:grid;width:17px;height:17px;place-items:center;border-radius:50%;background:#e8f3ea;color:#2f7d46;font-size:10px;font-weight:700}
+    .check-status{color:#5f6469}
+    .issue-summary{display:grid;grid-template-columns:120px 1fr;gap:5px 10px;border:1px solid #c5c9cd;background:#f7f7f7;padding:8px;margin-bottom:8px}
+    .issue-summary dt{color:#62676c}.issue-summary dd{margin:0}
+    .compare-grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid #abb0b5}
+    .source-card{min-width:0}
+    .source-card+ .source-card{border-left:1px solid #abb0b5}
+    .source-head{display:flex;height:31px;align-items:center;gap:6px;border-bottom:1px solid #c8ccd0;background:#eceeef;padding:0 8px;font-weight:700}
+    .source-body{display:grid;grid-template-columns:115px 1fr}
+    .source-body>*{min-height:31px;border-bottom:1px solid #e0e2e4;padding:6px 8px}
+    .source-body>*:nth-last-child(-n+2){border-bottom:0}
+    .source-body .key{background:#fafafa;color:#656a70}
+    .source-empty{display:grid;min-height:186px;place-items:center;padding:20px;text-align:center;color:#666}
+    .source-empty b{display:block;margin-bottom:5px;color:#8b5d0d}
+    .source-actions{display:flex;align-items:center;gap:7px;border-top:1px solid #c7cbd0;background:#f7f7f7;padding:7px 8px}
+    .match-list{display:grid;gap:5px}
+    .match-option{display:flex;align-items:center;gap:7px;border:1px solid #d0d3d6;padding:6px 8px;background:#fff}
+    .match-option input{accent-color:#2b78ad}
+    .act-workspace{display:grid;grid-template-columns:minmax(800px,1fr) 270px;gap:10px}
+    .formal-act{border:1px solid #9fa4a8;background:#fff;padding:18px 18px}
+    .formal-act .doc-kind{text-align:center;font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.03em}
+    .formal-act h2{text-align:center;margin-top:5px;font-size:18px}
+    .formal-act .act-period{text-align:center;margin:4px 0 2px;color:#333}
+    .formal-act .act-between{text-align:center;margin:0 0 2px;color:#333}
+    .formal-act .act-contract{text-align:center;margin:0 0 12px;color:#333}
+    .formal-act .act-intro{margin:12px 0 9px;line-height:1.45}
+    .act-parties{display:grid;grid-template-columns:1fr 1fr;border:1px solid #777;margin-bottom:10px}
+    .party{padding:8px}.party+.party{border-left:1px solid #777}
+    .party h3{margin-bottom:5px;font-size:11px;text-transform:uppercase}
+    .party p{margin-top:3px;font-size:10px}
+    .formal-act table{width:100%;table-layout:fixed;font-size:9px}
+    .formal-act th,.formal-act td{border:1px solid #777;padding:3px 4px;text-align:left;vertical-align:top}
+    .formal-act th{text-align:center;background:#f5f5f5}
+    .formal-act .num{text-align:right}
+    .formal-act .total td{font-weight:700}
+    .formal-act .side-title{font-weight:400;background:#fff}
+    .formal-act .date-col{width:7.5%}
+    .formal-act .doc-col{width:23%}
+    .formal-act .sum-col{width:9.75%}
+    .formal-act .counterparty-empty{color:#777;text-align:center;vertical-align:middle}
+    .act-result{margin:11px 0;line-height:1.45}
+    .signature-block{display:grid;grid-template-columns:1fr 1fr;gap:35px;margin-top:28px}
+    .signature-side{display:grid;gap:22px;color:#666;font-size:9px}
+    .signature-side b{color:#333;font-size:10px}
+    .signature-line{border-top:1px solid #777;padding-top:3px}
+    .send-panel{border:1px solid #bdc1c5;background:#f5f5f5;padding:9px}
+    .send-panel h3{margin-bottom:7px}
+    .send-panel dl{display:grid;grid-template-columns:88px 1fr;gap:6px;margin:0}
+    .send-panel dt{color:#666}.send-panel dd{margin:0}
+    .send-panel .cmd{width:100%;margin-top:7px}
+    .required-flag{display:inline-flex;min-height:18px;align-items:center;border:1px solid #ddc26d;background:#fff3bd;padding:1px 5px;color:#74500e;font-size:10px}
+    .doc-toolbar{display:flex;align-items:center;gap:6px;margin:5px 0}
+    .doc-toolbar .right{margin-left:auto}
+    .loading-line{position:relative;height:3px;background:#d9dcdf;overflow:hidden;margin:-1px 0 6px}
+    .loading-line i{display:block;height:100%;width:35%;background:#4c8dbb;animation:loading 1s linear infinite}
+    @keyframes loading{from{transform:translateX(-100%)}to{transform:translateX(330%)}}
+    @media(max-width:1050px){.shell{grid-template-columns:165px minmax(0,1fr)}.side-item{padding-left:8px}.act-workspace{display:block}.send-panel{margin-bottom:7px}.params{grid-template-columns:82px minmax(190px,1fr) 52px minmax(150px,.7fr) 82px minmax(190px,1fr) auto}}
+    @media(max-width:850px){.role-cards{grid-template-columns:1fr}}
+    @media(max-width:800px){.side-nav{display:none}.shell{display:block}.compare-grid{grid-template-columns:1fr}.source-card+.source-card{border-left:0;border-top:1px solid #abb0b5}}
+    @media print{
+      body{overflow:visible;background:#fff}
+      .global-bar,.open-tabs,.side-nav,.module-titlebar,.module-toolbar,.status-bar,.back-link,.detail-headline,.command-bar,.compact-fields,.notification,.summary-line,.form-pages,.section-actions,.send-panel{display:none!important}
+      .application,.shell,.workspace{display:block;height:auto;overflow:visible;background:#fff}
+      #content,.page-body{min-width:0;overflow:visible;padding:0}
+      .act-workspace{display:block}.formal-act{border:0;padding:0}
+    }
+  </style>
+</head>
+<body>
+  <div class="application">
+    <header class="global-bar">
+      <div class="app-logo" aria-label="1С">1С</div>
+      <button class="global-icon" data-action="global-menu" title="Главное меню">☰</button>
+      <div class="global-title">1С:Бухгалтерия предприятия, редакция 3.0</div>
+      <div class="global-spacer"></div>
+      <label class="global-search">⌕ <input aria-label="Глобальный поиск" placeholder="Поиск Ctrl+Shift+F"></label>
+      <button class="global-icon" data-action="toast-notifications" title="Оповещения">◌</button>
+      <button class="global-icon" data-action="toast-help" title="Справка">?</button>
+      <button class="user-button" data-action="toast-user"><span class="user-avatar">ДК</span><span>Дарья Крылова</span><span>⌄</span></button>
+    </header>
+
+    <div class="open-tabs" aria-label="Открытые формы">
+      <button class="open-tab"><span>Главное</span></button>
+      <button class="open-tab active"><span>Контур.Диадок / Онлайн-сверка</span><span class="close">×</span></button>
+    </div>
+
+    <div class="shell">
+      <aside class="side-nav" aria-label="Разделы 1С">
+        <button class="side-home" data-action="external-nav" data-section="Главное"><span>☰</span>Главное</button>
+        <div class="side-list">
+          <button class="side-item" data-action="external-nav" data-section="Банк и касса"><span class="side-icon">₽</span>Банк и касса</button>
+          <button class="side-item" data-action="external-nav" data-section="Продажи"><span class="side-icon">▣</span>Продажи</button>
+          <button class="side-item" data-action="external-nav" data-section="Покупки"><span class="side-icon">▤</span>Покупки</button>
+          <button class="side-item" data-action="external-nav" data-section="Склад"><span class="side-icon">▦</span>Склад</button>
+          <button class="side-item" data-action="external-nav" data-section="Операции"><span class="side-icon">↔</span>Операции</button>
+          <button class="side-item" data-action="external-nav" data-section="Отчёты"><span class="side-icon">▥</span>Отчёты</button>
+          <button class="side-item active" data-action="report"><span class="side-icon">Д</span>Контур.Диадок</button>
+          <button class="side-item" data-action="external-nav" data-section="Администрирование"><span class="side-icon">⚙</span>Администрирование</button>
+          <button class="side-item" data-action="toast-help"><span class="side-icon">?</span>Помощь</button>
+        </div>
+      </aside>
+      <main class="workspace" id="workspace">
+        <div class="module-titlebar">
+          <button class="module-mini" data-action="external-nav" data-section="Назад" title="Назад">←</button>
+          <button class="module-mini" data-action="external-nav" data-section="Вперёд" title="Вперёд">→</button>
+          <strong>Контур.Диадок</strong><span class="module-caption">/ 4.69.24 — <span id="formTabTitle">Онлайн-сверка</span></span>
+          <span class="module-spacer"></span>
+          <span class="module-org"><a href="#" data-action="toast-user">Дарья Крылова</a></span>
+          <button class="module-mini" data-action="plugins" title="Плагины">🔌</button>
+          <button class="module-mini" data-action="settings" title="Настройки">⚙</button>
+          <button class="module-mini" data-action="toast-help" title="Техническая поддержка">?</button>
+        </div>
+        <div id="content"></div>
+      </main>
+    </div>
+
+    <footer class="status-bar"><span class="ready">● Готово</span><span id="statusText">Готово к работе</span><span class="status-spacer"></span><span>ООО «Вектор Про»</span><span>Дарья Крылова</span></footer>
+  </div>
+  <div id="overlayRoot"></div>
+  <div id="menuRoot"></div>
+  <div id="toastRoot"></div>
+
+  <script type="text/plain" id="legacyPrototypeScript">
+  (()=>{
+    const fmt=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Math.abs(Math.round(n)))+' ₽';
+    const num=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Math.abs(Math.round(n)));
+    const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const today='01.09.2026';
+    const period='01.08.2026 — 31.08.2026';
+
+    const counterparties=[
+      {id:'sever',name:'ООО «Северный берег»',inn:'7705123456',kpp:'770501001',contract:'П-104/26',balance:304350,balanceLabel:'должны нам',matched:18,seed:41,issues:{
+        missing_1c:{doc:'УПД № 681',date:'18.08.2026',amount:428600},
+        missing_diadoc:{doc:'Поступление № 000731',date:'21.08.2026',amount:84900},
+        amount:{doc:'Акт № 119',date:'08.08.2026',diadocAmount:185000,oneCAmount:165000},
+        period:{doc:'УПД № 702',date:'29.08.2026',amount:312450},
+        unsigned:{doc:'УПД № 718',date:'25.08.2026',amount:96800,days:6},
+        correction:{doc:'УКД № 41',date:'30.08.2026',amount:18500,baseDoc:'УПД № 654'},
+        payment:{doc:'Платёжное поручение № 1842',date:'27.08.2026',amount:200000,variants:'УПД № 681 и УПД № 702'},
+        partial:{doc:'УПД № 690',date:'23.08.2026',amount:300000,paid:200000}
+      }},
+      {id:'stroi',name:'ООО «Стройкомплект»',inn:'6671024831',kpp:'667101001',contract:'СК-44/2026',balance:0,balanceLabel:'расчёты закрыты',matched:31,seed:12,issues:{}},
+      {id:'techno',name:'АО «ТехноЛайн»',inn:'7814639025',kpp:'781401001',contract:'ТЛ-18/25',balance:1284000,balanceLabel:'должны нам',matched:22,seed:23,issues:{amount:{doc:'Акт № ТЛ-88',date:'11.08.2026',diadocAmount:640000,oneCAmount:615000}}},
+      {id:'city',name:'ООО «Городские проекты»',inn:'7730255104',kpp:'773001001',contract:'ГП-205',balance:-540000,balanceLabel:'должны мы',matched:14,seed:34,issues:{period:{doc:'Акт № ГП-205/8',date:'28.08.2026',amount:540000}}},
+      {id:'prom',name:'ООО «Промснаб»',inn:'5047183206',kpp:'504701001',contract:'ПС-77/24',balance:96800,balanceLabel:'должны нам',matched:46,seed:45,issues:{unsigned:{doc:'УПД № ПС-103',date:'25.08.2026',amount:96800,days:6}}},
+      {id:'alpha',name:'ООО «Альфа-Сырьё»',inn:'5904348182',kpp:'590401001',contract:'АС-12/26',balance:428600,balanceLabel:'должны нам',matched:19,seed:56,issues:{missing_1c:{doc:'УПД № АС-341',date:'19.08.2026',amount:164000}}},
+      {id:'eng',name:'ООО «Инжиниринг Плюс»',inn:'7451392240',kpp:'745101001',contract:'ИП-09/26',balance:-84900,balanceLabel:'должны мы',matched:12,seed:67,issues:{missing_diadoc:{doc:'Поступление № ИП-00918',date:'22.08.2026',amount:126400}}},
+      {id:'log',name:'ООО «Логистика 24»',inn:'7802916507',kpp:'780201001',contract:'Л-340',balance:731500,balanceLabel:'должны нам',matched:27,seed:78,issues:{correction:{doc:'УКД № Л-56',date:'30.08.2026',amount:32700,baseDoc:'УПД № Л-440'}}},
+      {id:'data',name:'ООО «ДатаСофт»',inn:'9717098314',kpp:'771701001',contract:'ДС-51/25',balance:200000,balanceLabel:'аванс',matched:9,seed:89,issues:{payment:{doc:'Платёжное поручение № ДС-2190',date:'27.08.2026',amount:275000,variants:'Акт № ДС-44 и Акт № ДС-47'}}},
+      {id:'metal',name:'АО «Металл-Ресурс»',inn:'5406812279',kpp:'540601001',contract:'МР-118/26',balance:154300,balanceLabel:'должны нам',matched:38,seed:90,issues:{}}
+    ];
+
+    const issueLabels={
+      missing_1c:'Нет операции в 1С',missing_diadoc:'Нет документа в Диадоке',amount:'Разные суммы',period:'Другой период',unsigned:'Нет подписи',correction:'Корректировка не учтена',payment:'Платёж не распределён',partial:'Частичная оплата'
+    };
+
+    function issueFrom(c,code,d){
+      const base={id:c.id+'-'+code,cpId:c.id,code,doc:d.doc,date:d.date,severity:['missing_1c','amount','correction'].includes(code)?'danger':'warn'};
+      if(code==='missing_1c')return{...base,title:'Документ Диадока не отражён в 1С',short:'Подписанный документ найден в Диадоке, но проведённая операция в 1С не найдена.',impact:d.amount,rule:'ИНН/КПП, номер и сумма документа. Совпадений в учёте: 0.',action:'Открыть документ Диадока и проверить, создан и проведён ли документ учёта в 1С.',evidence:[['Документ Диадока',`${d.doc}, ${fmt(d.amount)}`,'Подписан обеими сторонами'],['Данные учёта 1С','Не найдено','Проведённые документы по контрагенту проверены']]};
+      if(code==='missing_diadoc')return{...base,title:'Для операции 1С не найден документ Диадока',short:'Операция проведена в 1С, но подходящего электронного документа в Диадоке нет.',impact:d.amount,rule:'ИНН/КПП, дата ±5 дней и сумма. Совпадений в Диадоке: 0.',action:'Проверить первичный документ. Он может быть бумажным, неформализованным или находиться вне Диадока.',evidence:[['Документ учёта 1С',`${d.doc}, ${fmt(d.amount)}`,'Проведён'],['Документы Диадока','Не найдено','Проверены формализованные документы']]};
+      if(code==='amount')return{...base,title:'Суммы в Диадоке и 1С отличаются',short:`Диадок — ${fmt(d.diadocAmount)}, 1С — ${fmt(d.oneCAmount)}.`,impact:Math.abs(d.diadocAmount-d.oneCAmount),rule:'ИНН/КПП, номер и дата совпали; сумма отличается.',action:'Проверить сумму документа, возврат, УКД или изменение исходного документа в 1С.',evidence:[['Документ Диадока',fmt(d.diadocAmount),'Подписанная сумма'],['Документ учёта 1С',fmt(d.oneCAmount),'Проведённая сумма']]};
+      if(code==='period')return{...base,title:'Операция отражена в другом периоде',short:'Дата документа относится к августу, период отражения в 1С — сентябрь.',impact:d.amount,rule:'Документ и сумма совпали; период документа не равен периоду отражения.',action:'Проверить корректность периода. Это не обязательно ошибка: допустимое расхождение можно подтвердить комментарием.',evidence:[['Документ Диадока',`${d.doc}, август 2026`,'Подписан'],['Данные учёта 1С','Сентябрь 2026','Отражён 02.09.2026']]};
+      if(code==='unsigned')return{...base,title:'Документ не подписан контрагентом',short:`Документ доставлен, подписи нет ${d.days} дней. Отказ не поступал.`,impact:d.amount,rule:'Статус Диадока: доставлен, ожидает подписи.',action:'Открыть документ Диадока и проверить состояние подписания.',evidence:[['Документ Диадока',`${d.doc}, ${fmt(d.amount)}`,'Доставлен, ожидает подписи'],['Документ учёта 1С','Найден','Проведён в августе']]};
+      if(code==='correction')return{...base,title:'Корректировка не отражена в 1С',short:`В Диадоке найден ${d.doc}, изменение взаиморасчётов в 1С не найдено.`,impact:d.amount,rule:'Связанный корректирующий документ найден; изменение суммы учёта не определено.',action:'Проверить УКД и исходный документ. В 1С корректировка могла быть отражена отдельным документом или изменением исходного.',evidence:[['Документ Диадока',`${d.doc}, −${fmt(d.amount)}`,'Подписан и связан с исходным'],['Данные учёта 1С',d.baseDoc,'Отдельное изменение не найдено']]};
+      if(code==='payment')return{...base,title:'Платёж не распределён по документам',short:'Проведённая оплата есть в 1С, однозначная связь с документом не определена.',impact:d.amount,rule:'Контрагент и сумма совпали; в назначении нет однозначного номера документа.',action:'Проверить назначение платежа и выбрать, какие документы он закрывает, либо оставить сумму авансом.',evidence:[['Платёж в 1С',`${d.doc}, ${fmt(d.amount)}`,'Проведён'],['Возможные документы',d.variants,'Однозначная связь не определена']]};
+      return{...base,title:'Документ оплачен частично',short:`Сумма документа — ${fmt(d.amount)}, связанные оплаты — ${fmt(d.paid)}.`,impact:d.amount-d.paid,rule:'Сумма проведённых связанных оплат меньше суммы документа.',action:'Проверить условия оплаты. Остаток может быть ожидаемой задолженностью и не требовать исправления.',evidence:[['Документ',`${d.doc}, ${fmt(d.amount)}`,'Диадок и 1С'],['Проведённые оплаты в 1С',fmt(d.paid),`Остаток ${fmt(d.amount-d.paid)}`]]};
+    }
+
+    const allIssues=c=>Object.entries(c.issues).map(([code,d])=>issueFrom(c,code,d));
+    const state={screen:'report',selected:null,tab:'questions',expanded:new Set(['sever']),filter:'all',search:'',counterpartyFilter:'',resolutions:new Map(),links:new Map(),createdActs:new Set(),history:{},dataTime:'01.09.2026 09:45',exchangeTime:'01.09.2026 09:42'};
+    const content=document.getElementById('content');
+    const overlayRoot=document.getElementById('overlayRoot');
+    const menuRoot=document.getElementById('menuRoot');
+
+    const openIssues=c=>allIssues(c).filter(x=>{const r=state.resolutions.get(x.id);return!r||r.pending});
+    const resolvedIssues=c=>allIssues(c).filter(x=>{const r=state.resolutions.get(x.id);return r&&!r.pending});
+    const turns=c=>{
+      const opening=((c.seed%3)-1)*45000;
+      const debit=750000+c.seed*13500;
+      const credit=opening+debit-c.balance;
+      return{opening,debit,credit,closing:c.balance};
+    };
+    const signed=n=>(n<0?'−':'')+fmt(n);
+    const balanceText=c=>c.balance===0?'0 ₽':signed(c.balance);
+    const statusMarkup=c=>{
+      const n=openIssues(c).length,res=resolvedIssues(c).length;
+      if(n)return`<span class="status ${allIssues(c).some(x=>x.severity==='danger'&&!state.resolutions.has(x.id))?'danger':'warn'}">${n} ${n===1?'вопрос':'вопросов'}</span>`;
+      if(res)return'<span class="status ok">Всё проверено</span>';
+      return'<span class="status ok">Расхождений нет</span>';
+    };
+    const setStatus=text=>document.getElementById('statusText').textContent=text;
+    const setFormTitle=text=>document.getElementById('formTabTitle').textContent=text;
+
+    function toast(title,note='',kind='ok'){
+      const root=document.getElementById('toastRoot');
+      root.innerHTML=`<div class="toast ${kind==='warn'?'warn':''}"><span class="toast-icon">${kind==='warn'?'!':'✓'}</span><div><b>${esc(title)}</b>${note?`<small>${esc(note)}</small>`:''}</div></div>`;
+      clearTimeout(toast.timer);toast.timer=setTimeout(()=>root.innerHTML='',2800);
+    }
+
+    function paramsMarkup(){
+      return`<div class="params">
+        <div class="field-label">Организация</div><div class="field"><input value="ООО «Вектор Про»" aria-label="Организация"><button class="field-button" data-action="field-choice" title="Выбрать">…</button></div>
+        <div class="field-label">Контрагент</div><div class="field"><input id="counterpartyParam" value="${esc(state.counterpartyFilter)}" list="counterpartyOptions" placeholder="Название, ИНН, КПП или договор" aria-label="Контрагент"><datalist id="counterpartyOptions">${counterparties.map(c=>`<option value="${esc(c.name)}">ИНН ${c.inn} · КПП ${c.kpp} · ${esc(c.contract)}</option>`).join('')}</datalist>${state.counterpartyFilter?'<button class="field-button" data-action="clear-counterparty" title="Очистить">×</button>':''}<button class="field-button" data-action="field-choice" data-choice="counterparty" title="Выбрать контрагента">…</button></div>
+        <button class="cmd primary" data-action="build"><span class="ico">▶</span>Сформировать</button>
+        <div class="params-advanced"><button data-action="toggle-advanced">Показать настройки</button><span>Период задаётся в верхней панели · объект расчётов: все договоры</span></div>
+      </div>`;
+    }
+
+    function commandBar(screen='report'){
+      if(screen==='report')return`<div class="command-bar">
+        <button class="cmd" data-action="recalculate"><span class="ico">↻</span>Пересчитать</button>
+        <button class="cmd" data-action="print-report"><span class="ico">▤</span>Печать</button>
+        <button class="cmd" data-action="settings"><span class="ico">⚙</span>Настройки</button>
+        <span class="command-separator"></span>
+        <button class="cmd flat" data-action="expand-all">Развернуть все</button>
+        <button class="cmd flat" data-action="collapse-all">Свернуть все</button>
+        <span class="command-separator"></span>
+        <button class="cmd flat" data-action="more" id="moreButton">Ещё ⌄</button>
+      </div>`;
+      return`<div class="command-bar">
+        <button class="cmd" data-action="recalculate"><span class="ico">↻</span>Пересчитать</button>
+        <button class="cmd" data-action="show-act"><span class="ico">▤</span>Подготовить акт в 1С</button>
+        <button class="cmd" data-action="open-onec-report"><span class="ico">▥</span>Карточка счёта</button>
+        <span class="command-separator"></span>
+        <button class="cmd flat" data-action="more" id="moreButton">Ещё ⌄</button>
+      </div>`;
+    }
+
+    function sourceInfoMarkup(){
+      return`<div class="info-group" id="sourceGroup">
+        <div class="info-group-title"><button data-action="toggle-source">▼</button><span>Данные проверки</span></div>
+        <div id="sourceGroupBody">
+          <div class="source-state"><div class="label">Данные учёта 1С</div><div><span class="state-ok">✓ Прочитаны</span> · проведённые документы и движения взаиморасчётов</div><div class="label">Конфигурация</div><div>1С:Бухгалтерия предприятия, редакция 3.0</div></div>
+          <div class="source-state"><div class="label">Документы Диадока</div><div><span class="state-ok">✓ Загружены</span> · формализованные XML и статусы</div><div class="label">Последний обмен</div><div>${state.exchangeTime} <button class="company-link" data-action="exchange">выполнить обмен</button></div></div>
+          <div class="source-state"><div class="label">Полнота данных</div><div><span class="state-ok">✓ Период покрыт полностью</span></div><div class="label">Границы и доступ</div><div>Документы с 01.01.2026 · доступны все подразделения</div></div>
+          <div class="source-state"><div class="label">Контрагенты</div><div><span class="state-ok">✓ Сопоставлены</span> · приоритет ИНН–КПП</div><div class="label">Последний расчёт</div><div>${state.dataTime} <button class="company-link" data-action="recalculate">пересчитать</button></div></div>
+        </div>
+      </div>`;
+    }
+
+    function reportRows(rows){
+      return rows.map(c=>{
+        const t=turns(c),expanded=state.expanded.has(c.id),issues=allIssues(c),open=openIssues(c);
+        const main=`<tr class="${state.selected?.id===c.id?'selected':''}" data-row-cp="${c.id}">
+          <td><div class="tree-cell"><button class="tree-toggle" data-action="toggle-cp" data-cp="${c.id}" aria-label="${expanded?'Свернуть':'Развернуть'}">${issues.length?(expanded?'▼':'▶'):'·'}</button><button class="company-link" data-action="open-cp" data-cp="${c.id}">${esc(c.name)}</button></div></td>
+          <td>${statusMarkup(c)}</td><td class="num">${signed(t.opening)}</td><td class="num">${fmt(t.debit)}</td><td class="num">${fmt(t.credit)}</td><td class="num"><b>${balanceText(c)}</b><div class="muted">${c.balanceLabel}</div></td><td class="center">${c.matched}</td><td class="center"><b>${open.length}</b>${resolvedIssues(c).length?` / ${resolvedIssues(c).length}`:''}</td>
+        </tr>`;
+        if(!expanded||!issues.length)return main;
+        const children=issues.map(x=>{
+          const res=state.resolutions.get(x.id),done=res&&!res.pending;
+          return`<tr class="question-row ${done?'resolved':'open'}" data-issue-row="${x.id}"><td><div class="tree-cell"><span class="tree-indent"></span><button class="doc-link" data-action="open-issue" data-issue="${x.id}">${esc(x.doc)}</button></div></td><td>${done?'<span class="status ok">Обработано</span>':res?.pending?'<span class="status warn">Ожидает пересчёта</span>':`<span class="status ${x.severity}">${issueLabels[x.code]}</span>`}</td><td></td><td class="num">${x.code==='correction'?'−':''}${fmt(x.impact)}</td><td></td><td></td><td class="center muted">${x.date}</td><td class="center">${done?'0':'1'}</td></tr>`;
+        }).join('');
+        return main+children;
+      }).join('');
+    }
+
+    function renderReport(){
+      state.screen='report';state.selected=null;setFormTitle('Онлайн-сверка');
+      const paramQ=state.counterpartyFilter.trim().toLowerCase();
+      const scope=counterparties.filter(c=>!paramQ||c.name.toLowerCase().includes(paramQ)||c.inn.includes(paramQ)||c.kpp.includes(paramQ)||c.contract.toLowerCase().includes(paramQ));
+      const calc=scope.map(c=>({c,open:openIssues(c).length}));
+      const rows=calc.filter(({c,open})=>{
+        const q=state.search.toLowerCase();
+        const searchOk=!q||c.name.toLowerCase().includes(q)||c.inn.includes(q)||c.kpp.includes(q)||c.contract.toLowerCase().includes(q);
+        const filterOk=state.filter==='all'||state.filter==='attention'&&open>0||state.filter==='ready'&&open===0;
+        return searchOk&&filterOk;
+      }).map(x=>x.c);
+      const totalOpen=calc.reduce((s,x)=>s+x.open,0),ready=calc.filter(x=>!x.open).length;
+      content.innerHTML=`
+        <div class="form-heading"><button class="favorite" title="Добавить в избранное">☆</button><h1>Онлайн-сверка</h1><span class="breadcrumb">Диадок / Онлайн-сверка</span></div>
+        ${commandBar('report')}
+        ${paramsMarkup()}
+        ${sourceInfoMarkup()}
+        <div class="totals">
+          <div class="total-cell"><span>Контрагентов</span><b>${scope.length}</b></div>
+          <div class="total-cell ok"><span>Готово к акту</span><b>${ready}</b></div>
+          <div class="total-cell warn"><span>Требуют внимания</span><b>${scope.length-ready}</b></div>
+          <div class="total-cell warn"><span>Открытых вопросов</span><b>${totalOpen}</b></div>
+          <div class="total-cell"><span>Период</span><b>Август 2026</b></div>
+        </div>
+        <div class="report-tools"><span class="label">Показывать:</span><div class="segment"><button data-filter="all" class="${state.filter==='all'?'active':''}">Все</button><button data-filter="attention" class="${state.filter==='attention'?'active':''}">Требуют внимания</button><button data-filter="ready" class="${state.filter==='ready'?'active':''}">Готовы</button></div><label class="mini-search">⌕ <input id="reportSearch" value="${esc(state.search)}" placeholder="Название, ИНН, КПП или договор"></label></div>
+        <div class="table-box"><table class="data-table" aria-label="Состояние взаиморасчётов"><thead><tr><th style="width:29%">Контрагент / документ</th><th style="width:16%">Состояние</th><th class="num">Начальное сальдо, ₽</th><th class="num">Дебет, ₽</th><th class="num">Кредит, ₽</th><th class="num">Конечное сальдо, ₽</th><th class="center">Совпало</th><th class="center">Вопросы</th></tr></thead><tbody>${rows.length?reportRows(rows):'<tr><td colspan="8" style="height:76px;text-align:center;color:var(--muted)">Контрагенты по заданным условиям не найдены. Очистите поле или измените запрос.</td></tr>'}</tbody></table></div>
+        <p class="small-note">Двойной щелчок по строке или ссылка контрагента открывают детальную сверку. Суммы рассчитаны по проведённым операциям текущей информационной базы.</p>`;
+      bindSearch();
+      setStatus(`Данные актуальны на ${state.dataTime} · ${totalOpen} открытых вопросов`);
+    }
+
+    function detailTotals(c){
+      const t=turns(c),open=openIssues(c),impact=open.reduce((s,x)=>s+x.impact,0);
+      return`<div class="totals"><div class="total-cell"><span>Начальное сальдо</span><b>${signed(t.opening)}</b></div><div class="total-cell"><span>Дебет за период</span><b>${fmt(t.debit)}</b></div><div class="total-cell"><span>Кредит за период</span><b>${fmt(t.credit)}</b></div><div class="total-cell"><span>Конечное сальдо</span><b><strong>${balanceText(c)}</strong></b></div><div class="total-cell ${open.length?'warn':'ok'}"><span>${open.length?'Требует проверки':'Сверка готова'}</span><b>${open.length?`${open.length} · ${fmt(impact)}`:'Вопросов нет'}</b></div></div>`;
+    }
+
+    function renderDetail(c=state.selected){
+      state.screen='detail';state.selected=c;setFormTitle(`Онлайн-сверка: ${c.name}`);
+      const open=openIssues(c),resolved=resolvedIssues(c);
+      content.innerHTML=`
+        <button class="back-link" data-action="report">← Вернуться к общему отчёту</button>
+        <div class="detail-headline"><div class="detail-title"><h1>${esc(c.name)}</h1><p>ИНН ${c.inn} / КПП ${c.kpp} · договор ${esc(c.contract)}</p></div><span>${statusMarkup(c)}</span></div>
+        ${commandBar('detail')}
+        <div class="compact-fields"><div class="field-label">Организация</div><div class="read-field">ООО «Вектор Про»</div><div class="field-label">Период</div><div class="read-field">${period}</div><div class="field-label">Контрагент</div><div class="read-field">${esc(c.name)}</div><div class="field-label">Договор</div><div class="read-field">${esc(c.contract)}</div></div>
+        ${open.length?`<div class="notification"><span class="notification-icon">!</span><div><b>${open.length} ${open.length===1?'вопрос требует':'вопросов требуют'} проверки</b><p>Система показывает найденные несоответствия, но не изменяет документы и проводки 1С. После исправления выполните обмен с Диадоком, если менялся электронный документ, и пересчитайте сверку.</p></div></div>`:`<div class="notification ok"><span class="notification-icon">✓</span><div><b>${resolved.length?'Все найденные вопросы обработаны':'Расхождений не найдено'}</b><p>Данные готовы для создания акта сверки в 1С и последующей отправки через Диадок.</p></div></div>`}
+        ${detailTotals(c)}
+        <div class="form-pages"><button class="page-tab ${state.tab==='questions'?'active':''}" data-tab="questions">Вопросы (${allIssues(c).length})</button><button class="page-tab ${state.tab==='journal'?'active':''}" data-tab="journal">Журнал взаиморасчётов</button><button class="page-tab ${state.tab==='act'?'active':''}" data-tab="act">Акт сверки</button><button class="page-tab ${state.tab==='history'?'active':''}" data-tab="history">История решений</button></div>
+        <div class="page-body" id="detailBody"></div>`;
+      renderDetailTab(c);
+      setStatus(`${c.name} · данные на ${state.dataTime}`);
+    }
+
+    function renderDetailTab(c){
+      const body=document.getElementById('detailBody');if(!body)return;
+      if(state.tab==='journal')return renderJournal(c,body);
+      if(state.tab==='act')return renderAct(c,body);
+      if(state.tab==='history')return renderHistory(c,body);
+      const issues=allIssues(c),open=openIssues(c),resolved=resolvedIssues(c);
+      body.innerHTML=`<div class="section-actions"><button class="cmd" data-action="recalculate">↻ Пересчитать</button><span class="command-separator"></span><span>Открыто: <b>${open.length}</b> · обработано: <b>${resolved.length}</b></span><span class="right small-note">Откройте вопрос, чтобы увидеть сравнение и действие</span></div>
+        ${issues.length?`<div class="table-box"><table class="data-table"><thead><tr><th style="width:17%">Состояние</th><th style="width:20%">Документ</th><th style="width:34%">Что обнаружено</th><th>Дата</th><th class="num">Влияние, ₽</th><th>Решение</th></tr></thead><tbody>${issues.map(x=>{const res=state.resolutions.get(x.id),done=res&&!res.pending;return`<tr data-issue-row="${x.id}"><td>${done?'<span class="status ok">Обработано</span>':res?.pending?'<span class="status warn">Ожидает пересчёта</span>':`<span class="status ${x.severity}">${issueLabels[x.code]}</span>`}</td><td><button class="doc-link" data-action="open-issue" data-issue="${x.id}">${esc(x.doc)}</button></td><td>${esc(x.short)}</td><td>${x.date}</td><td class="num">${fmt(x.impact)}</td><td>${res?`${esc(res.label)}<div class="muted">${esc(res.comment||'Без комментария')}</div>`:'—'}</td></tr>`}).join('')}</tbody></table></div>`:`<div class="empty-state"><div><b>Расхождений нет</b><p>Документы и операции по выбранным параметрам сопоставлены.</p></div></div>`}`;
+    }
+
+    function journalRows(c){
+      const t=turns(c),base1=118000+c.seed*1300,base2=76000+c.seed*850,pay=Math.round((base1+base2)*.58);
+      const rows=[
+        {date:'01.08.2026',doc:'Сальдо начальное',kind:'Остаток',debit:Math.max(0,t.opening),credit:Math.max(0,-t.opening),d:'—',o:'Учтено',result:'Перенесено'},
+        {date:'04.08.2026',doc:`УПД № ${c.seed}04`,kind:'Реализация',debit:base1,credit:0,d:'Подписан',o:'Проведён',result:'Сошлось'},
+        {date:'10.08.2026',doc:`Акт № ${c.seed}-18`,kind:'Оказание услуг',debit:base2,credit:0,d:'Подписан',o:'Проведён',result:'Сошлось'},
+        {date:'15.08.2026',doc:`Платёжное поручение № ${1700+c.seed}`,kind:'Оплата',debit:0,credit:pay,d:'Не требуется',o:'Проведён',result:'Учтено'}
+      ];
+      allIssues(c).forEach(x=>rows.push({date:x.date,doc:x.doc,kind:issueLabels[x.code],debit:['correction','payment'].includes(x.code)?0:x.impact,credit:['correction','payment'].includes(x.code)?x.impact:0,d:['missing_1c','unsigned','correction','amount','period'].includes(x.code)?'Найден':'Не найден',o:x.code==='missing_1c'?'Не найден':'Проведён',result:state.resolutions.has(x.id)?'Обработано':'Проверить',issueId:x.id}));
+      return rows.sort((a,b)=>a.date.split('.').reverse().join('').localeCompare(b.date.split('.').reverse().join('')));
+    }
+
+    function renderJournal(c,body){
+      const rows=journalRows(c);
+      body.innerHTML=`<div class="section-actions"><button class="cmd" data-action="export-csv">Сохранить в файл</button><button class="cmd" data-action="print-report">Печать</button><span class="right small-note">Документы Диадока не дублируют движения: финансовый эффект берётся из 1С</span></div><div class="table-box"><table class="data-table"><thead><tr><th>Дата</th><th style="width:25%">Документ / операция</th><th>Вид операции</th><th>Диадок</th><th>Данные 1С</th><th class="num">Дебет, ₽</th><th class="num">Кредит, ₽</th><th>Результат</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.date}</td><td>${r.issueId?`<button class="doc-link" data-action="open-issue" data-issue="${r.issueId}">${esc(r.doc)}</button>`:esc(r.doc)}</td><td>${esc(r.kind)}</td><td>${r.d}</td><td>${r.o}</td><td class="num">${r.debit?num(r.debit):'—'}</td><td class="num">${r.credit?num(r.credit):'—'}</td><td>${r.result==='Сошлось'||r.result==='Учтено'||r.result==='Перенесено'||r.result==='Обработано'?`<span class="status ok">${r.result}</span>`:'<span class="status warn">Проверить</span>'}</td></tr>`).join('')}</tbody></table></div>`;
+    }
+
+    function renderAct(c,body){
+      const open=openIssues(c),rows=journalRows(c),t=turns(c),ready=!open.length,created=state.createdActs.has(c.id),beneficiary=c.balance>=0?'ООО «Вектор Про»':c.name;
+      body.innerHTML=`<div class="section-actions"><button class="cmd primary" data-action="create-act">${created?'Обновить акт в 1С':'Создать акт сверки в 1С'}</button>${created?'<button class="cmd" data-action="open-act-onec">Открыть акт в 1С</button><button class="cmd" data-action="open-outgoing">Перейти к отправке в Диадоке</button>':''}${open.length?'<button class="cmd" data-action="questions">Перейти к вопросам</button>':''}<span class="right">${created?'<span class="status ok">Документ 1С создан</span>':ready?'<span class="status ok">Готов к созданию</span>':'<span class="status warn">Предварительный</span>'}</span></div>
+        ${ready?'<div class="notification ok"><span class="notification-icon">✓</span><div><b>Данные готовы для создания акта сверки в 1С</b><p>Ответ контрагента и двусторонний протокол разногласий не входят в первую версию.</p></div></div>':`<div class="notification"><span class="notification-icon">!</span><div><b>Предварительные данные: открыто вопросов — ${open.length}</b><p>Акт можно создать с предупреждением, но открытые вопросы останутся отмеченными.</p></div></div>`}
+        <div class="act-layout"><article class="act-sheet"><header><h2>Данные для акта сверки взаимных расчётов</h2><p>за период с 01.08.2026 по 31.08.2026</p><p>между ООО «Вектор Про» и ${esc(c.name)}</p></header><table><thead><tr><th>Дата</th><th>Документ / операция</th><th class="num">Дебет, ₽</th><th class="num">Кредит, ₽</th><th>Проверка</th></tr></thead><tbody>${rows.map(r=>{const issue=r.issueId?allIssues(c).find(x=>x.id===r.issueId):null,res=issue?state.resolutions.get(issue.id):null;return`<tr><td>${r.date}</td><td>${esc(r.doc)}</td><td class="num">${r.debit?num(r.debit):''}</td><td class="num">${r.credit?num(r.credit):''}</td><td>${issue?(res?.pending?'Ожидает пересчёта':res?'Обработано':'Требует проверки'):'Сошлось'}</td></tr>`}).join('')}<tr class="act-total"><td colspan="2">Обороты за период</td><td class="num">${num(t.debit)}</td><td class="num">${num(t.credit)}</td><td></td></tr><tr class="act-total"><td colspan="2">Сальдо на 31.08.2026</td><td colspan="2" class="num">${balanceText(c)}</td><td></td></tr></tbody></table><p class="act-conclusion">По данным ООО «Вектор Про» задолженность в пользу ${esc(beneficiary)} составляет <b>${fmt(c.balance)}.</b></p><p class="small-note">После создания данные записываются в штатный документ 1С «Акт сверки расчётов». Отправка выполняется через пакет Диадока.</p></article><aside class="act-side"><h3>Передача в штатный процесс</h3><dl><dt>Организация</dt><dd>ООО «Вектор Про»</dd><dt>Контрагент</dt><dd>${esc(c.name)}</dd><dt>Период</dt><dd>${period}</dd><dt>Договор</dt><dd>${esc(c.contract)}</dd><dt>Документ 1С</dt><dd>${created?'Создан':'Ещё не создан'}</dd><dt>Открытые вопросы</dt><dd>${open.length}</dd><dt>Следующий шаг</dt><dd>${created?'Раздел «Для отправки»':'Создать акт сверки в 1С'}</dd></dl></aside></div>`;
+    }
+
+    function historyEvents(c){
+      const dynamic=state.history[c.id]||[];
+      const base=[{time:'01.09.2026 09:45',action:'Выполнена проверка',detail:`Сопоставлено операций: ${c.matched+allIssues(c).length}`},...allIssues(c).map((x,i)=>({time:`01.09.2026 09:${String(43-i).padStart(2,'0')}`,action:'Найден вопрос',detail:`${x.title}: ${x.doc}`}))];
+      return[...dynamic,...base];
+    }
+    function renderHistory(c,body){
+      const events=historyEvents(c);
+      body.innerHTML=`<div class="section-actions"><span>Фиксируются результаты проверок и решения пользователя внутри модуля.</span></div><div class="table-box"><table class="data-table"><thead><tr><th style="width:160px">Дата и время</th><th style="width:190px">Действие</th><th>Описание</th><th style="width:150px">Пользователь</th></tr></thead><tbody>${events.map(e=>`<tr><td>${e.time}</td><td>${esc(e.action)}</td><td>${esc(e.detail)}</td><td>Дарья Крылова</td></tr>`).join('')}</tbody></table></div><p class="small-note">Изменения в электронных документах появятся после обмена с Диадоком, изменения учёта — после пересчёта.</p>`;
+    }
+
+    function findIssue(id){for(const c of counterparties){const x=allIssues(c).find(i=>i.id===id);if(x)return{x,c}}return null}
+    function evidenceAction(x,e,index){
+      const isDiadoc=e[0].includes('Диадок');
+      if(x.code==='missing_1c'&&!isDiadoc)return{source:'onec-list',label:'Открыть список операций 1С'};
+      if(x.code==='missing_diadoc'&&isDiadoc)return{source:'diadoc-list',label:'Открыть список документов'};
+      if(x.code==='payment'&&index===1)return{source:'variants',label:'Показать варианты'};
+      return{source:isDiadoc?'diadoc':'onec',label:isDiadoc?'Открыть карточку Диадока':'Открыть документ 1С'};
+    }
+    function issueLink(x){
+      if(state.links.has(x.id))return state.links.get(x.id);
+      if(['amount','period','correction'].includes(x.code))return{label:'Сопоставлено модулем',basis:'Организация, контрагент, дата и номер'};
+      return null;
+    }
+    function linkMarkup(x){
+      if(['unsigned','partial'].includes(x.code))return'';
+      const link=issueLink(x),payment=x.code==='payment';
+      return`<div class="dialog-group"><div class="dialog-group-title">${payment?'Связь оплаты с документами':'Связь документа 1С и Диадока'}</div><div class="dialog-group-content"><p>${link?`<span class="state-ok">✓ ${esc(link.label)}</span> · ${esc(link.basis)}`:'<span class="state-warn">Связь не определена</span>'}</p><div style="display:flex;gap:7px;margin-top:8px;flex-wrap:wrap">${link?`<button class="cmd" data-action="unlink-docs" data-issue="${x.id}">Отвязать</button>`:`<button class="cmd" data-action="auto-match" data-issue="${x.id}">${payment?'Подобрать автоматически':'Сопоставить автоматически'}</button><button class="cmd" data-action="manual-match" data-issue="${x.id}">${payment?'Выбрать документы вручную':'Сопоставить вручную'}</button>`}</div><p class="small-note">Сначала используется сохранённая связь. Если её нет, модуль ищет совпадение по организации, контрагенту, дате и номеру; неоднозначный результат подтверждает бухгалтер.</p></div></div>`;
+    }
+    function openIssue(id){
+      const found=findIssue(id);if(!found)return;const{x,c}=found,res=state.resolutions.get(x.id);
+      overlayRoot.innerHTML=`<div class="overlay"><section class="dialog" role="dialog" aria-modal="true" aria-label="Вопрос сверки"><header class="dialog-title"><h2>Вопрос сверки: ${esc(x.doc)}</h2><button class="dialog-close" data-action="close-dialog" aria-label="Закрыть">×</button></header><div class="dialog-body">
+        <div class="dialog-group"><div class="dialog-group-title">Что обнаружено</div><div class="dialog-group-content"><dl class="finding"><dt>Состояние</dt><dd><span class="status ${res?.pending?'warn':res?'ok':x.severity}">${res?.pending?'Ожидает пересчёта':res?'Обработано':issueLabels[x.code]}</span></dd><dt>Контрагент</dt><dd>${esc(c.name)}</dd><dt>Описание</dt><dd>${esc(x.short)}</dd><dt>Влияние</dt><dd><b>${fmt(x.impact)}</b></dd><dt>Правило проверки</dt><dd>${esc(x.rule)}</dd></dl></div></div>
+        <div class="dialog-group"><div class="dialog-group-title">Сравнение данных</div><div class="dialog-group-content"><table class="comparison"><thead><tr><th>Источник</th><th>Значение</th><th>Состояние</th><th>Открыть</th></tr></thead><tbody>${x.evidence.map((e,i)=>{const a=evidenceAction(x,e,i);return`<tr><td>${esc(e[0])}</td><td><strong>${esc(e[1])}</strong></td><td>${esc(e[2])}</td><td><button class="company-link" data-action="open-source" data-source="${a.source}">${a.label}</button></td></tr>`}).join('')}</tbody></table></div></div>
+        ${linkMarkup(x)}
+        ${res?`<div class="result-box ${res.pending?'pending':''}"><b>${esc(res.pending?'Ожидает пересчёта':res.label)}</b><p>${esc(res.comment||'Комментарий не указан')}</p><small>Дарья Крылова · ${res.at}</small></div>`:`<div class="dialog-group"><div class="dialog-group-title">Рекомендуемое действие</div><div class="dialog-group-content"><div class="recommendation"><span>!</span><p>${esc(x.action)}</p></div><label class="comment-label" for="resolutionComment" style="margin-top:10px">Комментарий</label><textarea id="resolutionComment" placeholder="Укажите основание решения. Для допустимого расхождения и учёта другим способом комментарий обязателен."></textarea><div class="validation" id="commentValidation"></div></div></div>`}
+      </div><footer class="dialog-footer"><span class="footer-note">Решение сохраняется в истории. Документы 1С автоматически не изменяются.</span>${res?`${res.pending?'<button class="cmd primary" data-action="recalculate">Пересчитать</button>':''}<button class="cmd" data-action="reopen-issue" data-issue="${x.id}">Вернуть в работу</button>`:`<button class="cmd" data-action="resolve" data-type="verified" data-issue="${x.id}">Расхождение допустимо</button><button class="cmd" data-action="resolve" data-type="other" data-issue="${x.id}">Учтено другим способом</button><button class="cmd primary" data-action="resolve" data-type="fixed" data-issue="${x.id}">Исправлено в 1С или Диадоке</button>`}<button class="cmd" data-action="close-dialog">Закрыть</button></footer></section></div>`;
+    }
+
+    function resolveIssue(id,type){
+      const found=findIssue(id);if(!found)return;const comment=document.getElementById('resolutionComment')?.value.trim()||'';
+      if(['other','verified'].includes(type)&&!comment){const validation=document.getElementById('commentValidation');document.getElementById('resolutionComment').classList.add('error');validation.textContent=type==='verified'?'Добавьте комментарий: почему расхождение является допустимым.':'Добавьте комментарий: как именно операция учтена.';validation.classList.add('visible');document.getElementById('resolutionComment').focus();return}
+      const labels={fixed:'Исправлено в 1С или Диадоке',verified:'Расхождение допустимо',other:'Учтено другим способом'};
+      const savedComment=comment||(type==='fixed'?'Пользователь отметил исправление. Требуется пересчитать сверку.':'Допустимое расхождение подтверждено пользователем.');
+      state.resolutions.set(id,{type,label:labels[type],comment:savedComment,at:'01.09.2026 10:12',pending:type==='fixed'});
+      state.history[found.c.id]=state.history[found.c.id]||[];
+      state.history[found.c.id].unshift({time:'01.09.2026 10:12',action:labels[type],detail:`${found.x.doc}: ${savedComment}`});
+      overlayRoot.innerHTML='';toast(labels[type],'Решение сохранено в истории');
+      state.screen==='detail'?renderDetail(found.c):renderReport();
+    }
+
+    function confirmPendingResolutions(){
+      state.resolutions.forEach((resolution,id)=>{
+        if(!resolution.pending)return;
+        resolution.pending=false;
+        const found=findIssue(id);if(!found)return;
+        state.history[found.c.id]=state.history[found.c.id]||[];
+        state.history[found.c.id].unshift({time:'01.09.2026 10:15',action:'Исправление подтверждено',detail:`${found.x.doc}: повторная проверка расхождение не обнаружила`});
+      });
+    }
+
+    function reopenIssue(id){
+      const found=findIssue(id);if(!found)return;state.resolutions.delete(id);state.history[found.c.id]=state.history[found.c.id]||[];state.history[found.c.id].unshift({time:'01.09.2026 10:14',action:'Вопрос возвращён в работу',detail:found.x.doc});overlayRoot.innerHTML='';toast('Вопрос возвращён в работу');renderDetail(found.c);
+    }
+
+    function openExchange(){
+      overlayRoot.innerHTML=`<div class="overlay"><section class="dialog small" role="dialog" aria-modal="true"><header class="dialog-title"><h2 id="syncTitle">Обмен с Диадоком</h2><button class="dialog-close" data-action="close-dialog">×</button></header><div class="dialog-body"><p>Модуль получит новые и изменившиеся электронные документы и актуальные статусы документооборота.</p><div class="sync-steps"><div class="sync-step" data-step="0"><span class="step-icon">1</span><div><b>Получение данных с сервера</b><small>Документы выбранной организации и доступных подразделений</small></div></div><div class="sync-step" data-step="1"><span class="step-icon">2</span><div><b>Сохранение в информационной базе</b><small>XML, статусы, подписи и связи корректировок</small></div></div></div><div class="progress"><i id="syncProgress"></i></div><p class="small-note" id="syncNote">Последний обмен: ${state.exchangeTime}</p></div><footer class="dialog-footer"><button class="cmd" data-action="close-dialog">Отмена</button><button class="cmd primary" data-action="start-exchange" id="startSync">Выполнить обмен</button></footer></section></div>`;
+    }
+
+    function startExchange(){
+      const btn=document.getElementById('startSync');if(!btn)return;btn.disabled=true;btn.textContent='Обмен…';
+      const progress=document.getElementById('syncProgress'),note=document.getElementById('syncNote'),title=document.getElementById('syncTitle');
+      [0,1].forEach((n,i)=>setTimeout(()=>{
+        const row=document.querySelector(`[data-step="${n}"]`);if(!row)return;
+        document.querySelectorAll('.sync-step.processing').forEach(x=>{x.classList.remove('processing');x.classList.add('done');x.querySelector('.step-icon').textContent='✓'});
+        row.classList.add('processing');note.textContent=['Получаем документы и события…','Сохраняем изменения в базе 1С…'][i];progress.style.width=((i+1)*50)+'%';
+        if(i===1)setTimeout(()=>{if(!row.isConnected)return;row.classList.remove('processing');row.classList.add('done');row.querySelector('.step-icon').textContent='✓';title.textContent='Обмен завершён';note.textContent='Получено 4 новых события, статусы 12 документов обновлены';state.exchangeTime='01.09.2026 10:14';btn.disabled=false;btn.textContent='Закрыть';btn.dataset.action='finish-exchange';},650);
+      },i*650));
+    }
+
+    function openRecalculate(){
+      overlayRoot.innerHTML=`<div class="overlay"><section class="dialog small" role="dialog" aria-modal="true"><header class="dialog-title"><h2 id="syncTitle">Пересчёт онлайн-сверки</h2><button class="dialog-close" data-action="close-dialog">×</button></header><div class="dialog-body"><p>Сверка будет пересчитана по данным текущей информационной базы 1С и документам, полученным при последнем обмене с Диадоком.</p><div class="sync-steps"><div class="sync-step" data-step="0"><span class="step-icon">1</span><div><b>Данные учёта 1С</b><small>Проведённые документы и движения взаиморасчётов</small></div></div><div class="sync-step" data-step="1"><span class="step-icon">2</span><div><b>Сопоставление</b><small>Сохранённые связи и поиск по реквизитам</small></div></div><div class="sync-step" data-step="2"><span class="step-icon">3</span><div><b>Проверки и сальдо</b><small>Расчёт без двойного учёта финансового эффекта</small></div></div></div><div class="progress"><i id="syncProgress"></i></div><p class="small-note" id="syncNote">Документы Диадока получены ${state.exchangeTime}</p></div><footer class="dialog-footer"><button class="cmd" data-action="close-dialog">Отмена</button><button class="cmd primary" data-action="start-recalculate" id="startSync">Пересчитать</button></footer></section></div>`;
+    }
+
+    function startRecalculate(){
+      const btn=document.getElementById('startSync');if(!btn)return;btn.disabled=true;btn.textContent='Расчёт…';
+      const progress=document.getElementById('syncProgress'),note=document.getElementById('syncNote'),title=document.getElementById('syncTitle');
+      [0,1,2].forEach((n,i)=>setTimeout(()=>{
+        const row=document.querySelector(`[data-step="${n}"]`);if(!row)return;
+        document.querySelectorAll('.sync-step.processing').forEach(x=>{x.classList.remove('processing');x.classList.add('done');x.querySelector('.step-icon').textContent='✓'});
+        row.classList.add('processing');note.textContent=['Читаем проведённые операции…','Проверяем существующие и возможные связи…','Выполняем проверки и рассчитываем сальдо…'][i];progress.style.width=((i+1)*33.4)+'%';
+        if(i===2)setTimeout(()=>{if(!row.isConnected)return;row.classList.remove('processing');row.classList.add('done');row.querySelector('.step-icon').textContent='✓';title.textContent='Сверка пересчитана';note.textContent='Проверено 267 операций и 252 документа';state.dataTime='01.09.2026 10:15';btn.disabled=false;btn.textContent='Закрыть';btn.dataset.action='finish-recalculate';},650);
+      },i*650));
+    }
+
+    function settingsDialog(){
+      overlayRoot.innerHTML=`<div class="overlay"><section class="dialog small"><header class="dialog-title"><h2>Параметры онлайн-сверки</h2><button class="dialog-close" data-action="close-dialog">×</button></header><div class="dialog-body"><div class="dialog-group"><div class="dialog-group-title">Информационная база</div><div class="dialog-group-content"><dl class="finding"><dt>Конфигурация</dt><dd>1С:Бухгалтерия предприятия, редакция 3.0</dd><dt>Размещение</dt><dd>Новый раздел модуля Диадока для 1С</dd><dt>Организация</dt><dd>ООО «Вектор Про»</dd><dt>Режим</dt><dd>Чтение данных учёта; без автоматического изменения документов и проводок</dd></dl></div></div><div class="dialog-group"><div class="dialog-group-title">Полнота данных</div><div class="dialog-group-content"><dl class="finding"><dt>Начало загрузки</dt><dd>01.01.2026</dd><dt>Подразделения</dt><dd>Доступны все подразделения организации</dd><dt>Контрагенты</dt><dd>Сопоставление 1С и Диадока выполнено</dd></dl></div></div><div class="dialog-group"><div class="dialog-group-title">Проверки</div><div class="dialog-group-content"><div class="radio-list"><label><input type="checkbox" checked> Использовать сохранённую связь документов; при её отсутствии сопоставлять по организации, контрагенту, дате и номеру</label><label><input type="checkbox" checked> Проверять суммы, периоды, статусы и корректировки</label><label><input type="checkbox" checked> Учитывать оплаты, возвраты, взаимозачёты и сторно из 1С</label></div></div></div><p class="small-note">Состав доступных документов и регистров зависит от поддерживаемой конфигурации 1С.</p></div><footer class="dialog-footer"><button class="cmd primary" data-action="close-settings">Сохранить и закрыть</button><button class="cmd" data-action="close-dialog">Отмена</button></footer></section></div>`;
+    }
+
+    function counterpartyChooser(){
+      overlayRoot.innerHTML=`<div class="overlay"><section class="dialog" role="dialog" aria-modal="true" aria-label="Выбор контрагента"><header class="dialog-title"><h2>Выбор контрагента</h2><button class="dialog-close" data-action="close-dialog" aria-label="Закрыть">×</button></header><div class="dialog-body"><label class="choice-search">⌕ <input id="counterpartyChoiceSearch" placeholder="Введите название, ИНН, КПП или договор" autocomplete="off" autofocus></label><div class="choice-table-box"><table class="data-table"><thead><tr><th style="width:32%">Контрагент</th><th>ИНН</th><th>КПП</th><th>Договор</th><th>Состояние</th><th></th></tr></thead><tbody><tr data-choice-row data-search="все контрагенты"><td><b>Все контрагенты</b></td><td>—</td><td>—</td><td>—</td><td>Без отбора</td><td><button class="company-link" data-action="choose-counterparty" data-cp="all">Выбрать</button></td></tr>${counterparties.map(c=>`<tr data-choice-row data-search="${esc((c.name+' '+c.inn+' '+c.kpp+' '+c.contract).toLowerCase())}"><td>${esc(c.name)}</td><td>${c.inn}</td><td>${c.kpp}</td><td>${esc(c.contract)}</td><td>${statusMarkup(c)}</td><td><button class="company-link" data-action="choose-counterparty" data-cp="${c.id}">Выбрать</button></td></tr>`).join('')}</tbody></table><div class="choice-empty" id="choiceEmpty">Контрагенты не найдены</div></div></div><footer class="dialog-footer"><span class="footer-note">Поиск выполняется по названию, ИНН, КПП и договору.</span><button class="cmd" data-action="close-dialog">Отмена</button></footer></section></div>`;
+      setTimeout(()=>document.getElementById('counterpartyChoiceSearch')?.focus(),0);
+    }
+
+    function moreMenu(anchor){
+      const r=anchor.getBoundingClientRect();menuRoot.innerHTML=`<div class="more-menu" style="top:${Math.min(r.bottom+2,window.innerHeight-180)}px;left:${Math.min(r.left,window.innerWidth-250)}px"><button data-action="exchange">Обмен с сервером</button><button data-action="recalculate">Пересчитать сверку</button><button data-action="export-csv">Сохранить результат в файл</button><button data-action="print-report">Печать</button><div class="menu-separator"></div><button data-action="reset-demo">Сбросить демонстрационные решения</button><button data-action="settings">Настройки</button></div>`;
+    }
+
+    function bindSearch(){
+      const input=document.getElementById('reportSearch');if(!input)return;
+      input.addEventListener('input',e=>{state.search=e.target.value;const pos=e.target.selectionStart;renderReport();const next=document.getElementById('reportSearch');next.focus();next.setSelectionRange(pos,pos)});
+      const param=document.getElementById('counterpartyParam');
+      param?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();state.counterpartyFilter=e.target.value.trim();renderReport();toast('Отбор по контрагенту применён',state.counterpartyFilter||'Все контрагенты')}});
+    }
+
+    function exportCsv(){
+      const c=state.selected||counterparties[0],rows=[['Дата','Документ','Вид операции','Диадок','1С','Дебет','Кредит','Результат'],...journalRows(c).map(r=>[r.date,r.doc,r.kind,r.d,r.o,r.debit||'',r.credit||'',r.result])];
+      const csv='\ufeff'+rows.map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\n');
+      const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='Онлайн-сверка_'+c.inn+'.csv';a.click();URL.revokeObjectURL(a.href);toast('Файл журнала сформирован',c.name);
+    }
+
+    function addHistory(c,action,detail,time='01.09.2026 10:16'){
+      state.history[c.id]=state.history[c.id]||[];
+      state.history[c.id].unshift({time,action,detail});
+    }
+
+    function manualMatchDialog(id){
+      const found=findIssue(id);if(!found)return;const{x,c}=found,payment=x.code==='payment';
+      const first=payment?'УПД № 681 и УПД № 702':x.code==='missing_diadoc'?'УПД № 731 от 21.08.2026':`Документ 1С к ${x.doc}`;
+      const second=payment?'Оставить сумму авансом':x.code==='missing_1c'?'Реализация № 000681 от 18.08.2026':'Другой документ по контрагенту';
+      overlayRoot.innerHTML=`<div class="overlay"><section class="dialog small" role="dialog" aria-modal="true"><header class="dialog-title"><h2>${payment?'Выбор связи оплаты':'Сопоставление вручную'}</h2><button class="dialog-close" data-action="close-dialog">×</button></header><div class="dialog-body"><p>Контрагент: <b>${esc(c.name)}</b></p><div class="choice-table-box" style="margin-top:9px"><table class="data-table" style="min-width:0"><thead><tr><th>Возможный вариант</th><th style="width:110px">Действие</th></tr></thead><tbody><tr><td>${esc(first)}</td><td><button class="company-link" data-action="choose-match" data-issue="${x.id}" data-choice="${esc(first)}">Выбрать</button></td></tr><tr><td>${esc(second)}</td><td><button class="company-link" data-action="choose-match" data-issue="${x.id}" data-choice="${esc(second)}">Выбрать</button></td></tr></tbody></table></div><p class="small-note">В рабочем модуле откроется стандартная форма выбора документа 1С.</p></div><footer class="dialog-footer"><button class="cmd" data-action="open-issue" data-issue="${x.id}">Назад</button><button class="cmd" data-action="close-dialog">Отмена</button></footer></section></div>`;
+    }
+
+    function createOrUpdateAct(c){
+      const existed=state.createdActs.has(c.id);state.createdActs.add(c.id);
+      addHistory(c,existed?'Акт сверки обновлён':'Акт сверки создан',`${c.name}: данные переданы в штатный документ 1С`);
+      toast(existed?'Акт в 1С обновлён':'Акт сверки создан в 1С',openIssues(c).length?'Документ создан с открытыми вопросами':'Можно перейти в раздел «Для отправки»',openIssues(c).length?'warn':'ok');
+      state.tab='act';renderDetail(c);
+    }
+
+    document.addEventListener('click',e=>{
+      const target=e.target.closest('[data-action]');
+      if(!target){if(!e.target.closest('.more-menu'))menuRoot.innerHTML='';return}
+      const action=target.dataset.action;menuRoot.innerHTML='';
+      if(action==='report')return renderReport();
+      if(action==='open-cp')return renderDetail(counterparties.find(c=>c.id===target.dataset.cp));
+      if(action==='toggle-cp'){const id=target.dataset.cp;state.expanded.has(id)?state.expanded.delete(id):state.expanded.add(id);return renderReport()}
+      if(action==='open-issue')return openIssue(target.dataset.issue);
+      if(action==='close-dialog'){overlayRoot.innerHTML='';return}
+      if(action==='resolve')return resolveIssue(target.dataset.issue,target.dataset.type);
+      if(action==='reopen-issue')return reopenIssue(target.dataset.issue);
+      if(action==='exchange')return openExchange();
+      if(action==='start-exchange')return startExchange();
+      if(action==='finish-exchange'){overlayRoot.innerHTML='';setStatus(`Последний обмен с Диадоком: ${state.exchangeTime}`);toast('Обмен с Диадоком завершён','Для учёта изменений пересчитайте сверку');return state.screen==='detail'?renderDetail(state.selected):renderReport()}
+      if(action==='recalculate')return openRecalculate();
+      if(action==='start-recalculate')return startRecalculate();
+      if(action==='finish-recalculate'){confirmPendingResolutions();overlayRoot.innerHTML='';setStatus(`Сверка рассчитана на ${state.dataTime}`);toast('Сверка пересчитана','Исправления перепроверены по данным 1С и Диадока');return state.screen==='detail'?renderDetail(state.selected):renderReport()}
+      if(action==='auto-match'){
+        const found=findIssue(target.dataset.issue);if(!found)return;
+        if(['missing_1c','missing_diadoc'].includes(found.x.code))return toast('Подходящий документ автоматически не найден','Попробуйте сопоставить вручную или проверьте отсутствие документа','warn');
+        const basis=found.x.code==='payment'?'Предложены документы по контрагенту, сумме и дате':'Организация, контрагент, дата и номер';
+        state.links.set(found.x.id,{label:found.x.code==='payment'?'Возможная связь найдена':'Сопоставлено автоматически',basis});addHistory(found.c,'Документы сопоставлены',`${found.x.doc}: ${basis}`);openIssue(found.x.id);return toast('Связь найдена','Проверьте результат сопоставления');
+      }
+      if(action==='manual-match')return manualMatchDialog(target.dataset.issue);
+      if(action==='choose-match'){
+        const found=findIssue(target.dataset.issue);if(!found)return;const choice=target.dataset.choice||'Документ выбран';
+        state.links.set(found.x.id,{label:'Сопоставлено вручную',basis:choice});addHistory(found.c,'Документы сопоставлены вручную',`${found.x.doc}: ${choice}`);openIssue(found.x.id);return toast('Связь сохранена',choice);
+      }
+      if(action==='unlink-docs'){
+        const found=findIssue(target.dataset.issue);if(!found)return;state.links.set(found.x.id,null);addHistory(found.c,'Связь документов удалена',found.x.doc);openIssue(found.x.id);return toast('Связь удалена','Документы можно сопоставить повторно','warn');
+      }
+      if(action==='build'){state.counterpartyFilter=document.getElementById('counterpartyParam')?.value.trim()||'';toast('Отчёт сформирован',state.counterpartyFilter?`Контрагент: ${state.counterpartyFilter}`:'Все контрагенты');return renderReport()}
+      if(action==='expand-all'){counterparties.forEach(c=>state.expanded.add(c.id));return renderReport()}
+      if(action==='collapse-all'){state.expanded.clear();return renderReport()}
+      if(action==='more')return moreMenu(target);
+      if(action==='settings')return settingsDialog();
+      if(action==='close-settings'){overlayRoot.innerHTML='';return toast('Настройки сохранены')}
+      if(action==='open-source'){const messages={diadoc:['Открывается карточка электронного документа','Из карточки доступен переход в веб-версию Диадока'],onec:['Открывается документ 1С','Переход выполняется в текущей информационной базе'],'onec-list':['Открывается список операций 1С','Применён отбор по контрагенту и периоду'],'diadoc-list':['Открывается список документов Диадока','Применён отбор по контрагенту и реквизитам'],variants:['Показаны возможные связи','Бухгалтер выбирает подходящие документы']},m=messages[target.dataset.source]||messages.onec;return toast(m[0],m[1])}
+      if(action==='open-onec-report')return toast('Открывается стандартный отчёт 1С','Карточка счёта по выбранному контрагенту');
+      if(action==='show-act'){state.tab='act';return renderDetail(state.selected)}
+      if(action==='create-act')return createOrUpdateAct(state.selected);
+      if(action==='open-act-onec')return toast('Открывается акт сверки в 1С','Штатный документ «Акт сверки расчётов»');
+      if(action==='open-outgoing')return toast('Открывается раздел «Для отправки»','Акт можно проверить, подписать и отправить средствами Диадока');
+      if(action==='questions'){state.tab='questions';return renderDetail(state.selected)}
+      if(action==='print-act'||action==='print-report')return window.print();
+      if(action==='save-pdf')return toast('Открыта печатная форма','В 1С её можно сохранить в PDF');
+      if(action==='export-csv')return exportCsv();
+      if(action==='reset-demo'){state.resolutions.clear();state.links.clear();state.createdActs.clear();state.history={};toast('Демонстрационные решения сброшены');return state.screen==='detail'?renderDetail(state.selected):renderReport()}
+      if(action==='toggle-source'){const body=document.getElementById('sourceGroupBody');if(!body)return;body.classList.toggle('hidden');target.textContent=body.classList.contains('hidden')?'▶':'▼';return}
+      if(action==='module-filters'){
+        const body=document.getElementById('sourceGroupBody');
+        if(!body)return toast('Фильтры доступны в общем отчёте','Вернитесь к списку контрагентов');
+        body.classList.toggle('hidden');target.textContent=body.classList.contains('hidden')?'△':'▽';return toast(body.classList.contains('hidden')?'Данные проверки скрыты':'Данные проверки показаны','Организация, период, источники и полнота данных');
+      }
+      if(action==='toggle-advanced'){target.textContent=target.textContent.includes('Показать')?'Скрыть настройки':'Показать настройки';return toast('Дополнительные настройки','Объект расчётов и виды документов')}
+      if(action==='field-choice')return target.dataset.choice==='counterparty'?counterpartyChooser():toast('Открывается стандартная форма выбора 1С');
+      if(action==='choose-counterparty'){const c=counterparties.find(x=>x.id===target.dataset.cp);state.counterpartyFilter=c?c.name:'';overlayRoot.innerHTML='';renderReport();return toast('Контрагент выбран',c?c.name:'Все контрагенты')}
+      if(action==='clear-counterparty'){state.counterpartyFilter='';return renderReport()}
+      if(action==='external-nav'){
+        const section=target.dataset.section||'Диадок';
+        if(section==='Назад'||section==='Вперёд')return toast(`Навигация: ${section.toLowerCase()}`,'Переход между открытыми формами 1С');
+        return toast(`Открывается раздел «${section}»`,'В прототипе подробно проработан сценарий онлайн-сверки');
+      }
+      if(action==='global-menu')return toast('Меню функций 1С');
+      if(action==='toast-help')return toast('Справка по онлайн-сверке','Описание проверок и границ первой версии');
+      if(action==='toast-notifications'){const count=counterparties.filter(c=>openIssues(c).length).length;return toast('Оповещения',`${count} контрагентов требуют внимания`,'warn')}
+      if(action==='toast-user')return toast('Текущий пользователь','Дарья Крылова · ООО «Вектор Про»');
+    });
+
+    document.addEventListener('click',e=>{
+      const tab=e.target.closest('[data-tab]');if(tab){state.tab=tab.dataset.tab;renderDetail(state.selected)}
+      const filter=e.target.closest('[data-filter]');if(filter){state.filter=filter.dataset.filter;renderReport()}
+    });
+    document.addEventListener('dblclick',e=>{const row=e.target.closest('[data-row-cp]');if(row)renderDetail(counterparties.find(c=>c.id===row.dataset.rowCp))});
+    document.addEventListener('input',e=>{if(e.target.id==='counterpartyChoiceSearch'){const q=e.target.value.trim().toLowerCase();let visible=0;document.querySelectorAll('[data-choice-row]').forEach(row=>{const show=!q||row.dataset.search.includes(q);row.hidden=!show;if(show)visible++});document.getElementById('choiceEmpty')?.classList.toggle('visible',visible===0)}});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){overlayRoot.innerHTML='';menuRoot.innerHTML=''}});
+
+    renderReport();
+  })();
+  </script>
+  <script>
+  (()=>{
+    'use strict';
+
+    const fmt=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Math.abs(Number(n)||0))+' ₽';
+    const num=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Math.abs(Number(n)||0));
+    const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const content=document.getElementById('content');
+    const overlayRoot=document.getElementById('overlayRoot');
+    const menuRoot=document.getElementById('menuRoot');
+    const issueNames={
+      missing_1c:'Документ не найден в 1С',
+      missing_diadoc:'Документ Диадока не найден',
+      amount:'Разные суммы',
+      period:'Другой период',
+      unsigned:'Требуется подпись',
+      correction:'Корректировка не учтена'
+    };
+
+    const counterparties=[
+      {
+        id:'sever',name:'ООО «Северный берег»',inn:'7705123456',kpp:'770501001',balance:304350,balanceLabel:'должны нам',matched:18,seed:41,
+        contracts:[{id:'p104',label:'П-104/26 от 12.01.2026',role:'supplier',opening:-45000,debit:600000,credit:763500,matched:9},{id:'service',label:'Услуги-08/26 от 01.08.2026',role:'buyer',opening:90000,debit:1453500,credit:1030650,matched:9}],
+        issues:[
+          {id:'sever-missing1c',code:'missing_1c',contract:'p104',direction:'in',date:'18.08.2026',impact:428600,summary:'Входящий документ Диадока завершён, но связанный документ учёта в 1С не найден.',diadoc:{type:'УПД',number:'681',date:'18.08.2026',amount:428600,status:'Документооборот завершён'},onec:[]},
+          {id:'sever-missingdd',code:'missing_diadoc',contract:'p104',direction:'in',date:'21.08.2026',impact:84900,summary:'Операция проведена в 1С, но связанный формализованный документ Диадока не найден.',diadoc:null,onec:[{type:'Поступление (акт, накладная, УПД)',number:'000731',date:'21.08.2026',amount:84900,status:'Проведён'}]},
+          {id:'sever-amount',code:'amount',contract:'service',direction:'out',date:'08.08.2026',impact:20000,summary:'Документ в 1С изменён после подписания в Диадоке: 165 000 ₽ в 1С и 185 000 ₽ в Диадоке.',diadoc:{type:'Акт оказанных услуг',number:'119',date:'08.08.2026',amount:185000,status:'Документооборот завершён'},onec:[{type:'Реализация (акты, накладные, УПД)',number:'000119',date:'08.08.2026',amount:165000,status:'Проведён'}]},
+          {id:'sever-period',code:'period',contract:'p104',direction:'in',date:'29.08.2026',impact:312450,summary:'Документ Диадока от 31.07.2026 отражён в 1С 29.08.2026. В акт он попадёт датой отражения в 1С.',diadoc:{type:'УПД',number:'702',date:'31.07.2026',amount:312450,status:'Документооборот завершён'},onec:[{type:'Поступление (акт, накладная, УПД)',number:'000744',date:'29.08.2026',amount:312450,status:'Проведён'}]},
+          {id:'sever-unsigned',code:'unsigned',contract:'service',direction:'out',date:'25.08.2026',impact:96800,summary:'Исходящий документ доставлен контрагенту, но пока не подписан.',diadoc:{type:'УПД',number:'718',date:'25.08.2026',amount:96800,status:'Требуется подпись контрагента'},onec:[{type:'Реализация (акты, накладные, УПД)',number:'000718',date:'25.08.2026',amount:96800,status:'Проведён'}]},
+          {id:'sever-correction',code:'correction',contract:'p104',direction:'in',date:'30.08.2026',impact:18500,summary:'В Диадоке есть связанный УКД, изменение суммы взаиморасчётов в 1С не найдено.',diadoc:{type:'УКД',number:'41',date:'30.08.2026',amount:-18500,status:'Документооборот завершён'},onec:[{type:'Поступление (акт, накладная, УПД)',number:'000654',date:'05.08.2026',amount:246000,status:'Проведён; отдельная корректировка не найдена'}]}
+        ]
+      },
+      {id:'stroi',name:'ООО «Стройкомплект»',inn:'6671024831',kpp:'667101001',balance:0,balanceLabel:'расчёты закрыты',matched:31,seed:12,contracts:[{id:'sk44',label:'СК-44/2026 от 09.01.2026',role:'buyer'}],issues:[]},
+      {id:'techno',name:'АО «ТехноЛайн»',inn:'7814639025',kpp:'781401001',balance:1284000,balanceLabel:'должны нам',matched:22,seed:23,contracts:[{id:'tl18',label:'ТЛ-18/25 от 15.12.2025',role:'buyer'},{id:'tlservice',label:'Сервис-07/26 от 01.07.2026',role:'buyer'}],issues:[{id:'techno-amount',code:'amount',contract:'tlservice',direction:'out',date:'11.08.2026',impact:25000,summary:'Документ в 1С изменён после подписания: 615 000 ₽ в 1С и 640 000 ₽ в Диадоке.',diadoc:{type:'Акт оказанных услуг',number:'ТЛ-88',date:'11.08.2026',amount:640000,status:'Документооборот завершён'},onec:[{type:'Реализация (акты, накладные, УПД)',number:'ТЛ-00088',date:'11.08.2026',amount:615000,status:'Проведён'}]}]},
+      {id:'city',name:'ООО «Городские проекты»',inn:'7730255104',kpp:'773001001',balance:-540000,balanceLabel:'должны мы',matched:14,seed:34,contracts:[{id:'gp205',label:'ГП-205 от 03.02.2026',role:'supplier'}],issues:[{id:'city-period',code:'period',contract:'gp205',direction:'in',date:'01.09.2026',impact:540000,summary:'Документ Диадока от 28.08.2026 отражён в 1С 01.09.2026. В акт он попадёт датой отражения в 1С.',diadoc:{type:'Акт оказанных услуг',number:'ГП-205/8',date:'28.08.2026',amount:540000,status:'Документооборот завершён'},onec:[{type:'Поступление (акт, накладная, УПД)',number:'ГП-205/8',date:'01.09.2026',amount:540000,status:'Проведён'}]}]},
+      {id:'prom',name:'ООО «Промснаб»',inn:'5047183206',kpp:'504701001',balance:96800,balanceLabel:'должны нам',matched:46,seed:45,contracts:[{id:'ps77',label:'ПС-77/24 от 11.11.2024',role:'buyer'}],issues:[{id:'prom-unsigned',code:'unsigned',contract:'ps77',direction:'out',date:'25.08.2026',impact:96800,summary:'Исходящий УПД доставлен, но подпись контрагента ещё не получена.',diadoc:{type:'УПД',number:'ПС-103',date:'25.08.2026',amount:96800,status:'Требуется подпись контрагента'},onec:[{type:'Реализация (акты, накладные, УПД)',number:'ПС-00103',date:'25.08.2026',amount:96800,status:'Проведён'}]}]},
+      {id:'alpha',name:'ООО «Альфа-Сырьё»',inn:'5904348182',kpp:'590401001',balance:428600,balanceLabel:'должны нам',matched:19,seed:56,contracts:[{id:'as12',label:'АС-12/26 от 18.01.2026',role:'supplier'}],issues:[{id:'alpha-missing1c',code:'missing_1c',contract:'as12',direction:'in',date:'19.08.2026',impact:164000,summary:'Входящий УПД завершён в Диадоке, связанный документ 1С не найден.',diadoc:{type:'УПД',number:'АС-341',date:'19.08.2026',amount:164000,status:'Документооборот завершён'},onec:[]}]},
+      {id:'eng',name:'ООО «Инжиниринг Плюс»',inn:'7451392240',kpp:'745101001',balance:-84900,balanceLabel:'должны мы',matched:12,seed:67,contracts:[{id:'ip09',label:'ИП-09/26 от 10.02.2026',role:'supplier'}],issues:[{id:'eng-missingdd',code:'missing_diadoc',contract:'ip09',direction:'in',date:'22.08.2026',impact:126400,summary:'Поступление проведено в 1С, связанный документ Диадока не найден.',diadoc:null,onec:[{type:'Поступление (акт, накладная, УПД)',number:'ИП-00918',date:'22.08.2026',amount:126400,status:'Проведён'}]}]},
+      {id:'log',name:'ООО «Логистика 24»',inn:'7802916507',kpp:'780201001',balance:731500,balanceLabel:'должны нам',matched:27,seed:78,contracts:[{id:'l340',label:'Л-340 от 15.03.2026',role:'supplier'}],issues:[{id:'log-correction',code:'correction',contract:'l340',direction:'in',date:'30.08.2026',impact:32700,summary:'Входящий УКД найден в Диадоке, корректировка взаиморасчётов в 1С не определена.',diadoc:{type:'УКД',number:'Л-56',date:'30.08.2026',amount:-32700,status:'Документооборот завершён'},onec:[{type:'Поступление (акт, накладная, УПД)',number:'Л-00440',date:'12.08.2026',amount:328000,status:'Проведён; корректировка не найдена'}]}]},
+      {id:'data',name:'ООО «ДатаСофт»',inn:'9717098314',kpp:'771701001',balance:200000,balanceLabel:'аванс',matched:9,seed:89,contracts:[{id:'ds51',label:'ДС-51/25 от 20.12.2025',role:'buyer'}],issues:[]},
+      {id:'metal',name:'АО «Металл-Ресурс»',inn:'5406812279',kpp:'540601001',balance:154300,balanceLabel:'должны нам',matched:38,seed:90,contracts:[{id:'mr118',label:'МР-118/26 от 04.04.2026',role:'buyer'}],issues:[]}
+    ];
+
+    const state={
+      screen:'report',selected:null,tab:'discrepancies',filter:'all',search:'',counterpartyFilter:'',
+      expanded:new Set(['sever']),expandedContracts:new Set(['sever-p104','sever-service']),
+      resolutions:new Map(),links:new Map(),history:{},createdActs:new Set(),sentActs:new Set(),
+      activeRoles:{sever:'supplier'},activeContracts:{sever:'p104'},
+      period:'01.08.2026 — 31.08.2026',lastCheck:'01.09.2026 09:45',sourceOpen:true,sourceBusy:null
+    };
+
+    const getCounterparty=id=>counterparties.find(c=>c.id===id);
+    const getIssue=id=>{for(const c of counterparties){const issue=c.issues.find(x=>x.id===id);if(issue)return{c,issue}}return null};
+    const getContract=(c,id)=>c.contracts.find(x=>x.id===id)?.label||'Без договора';
+    const resolution=id=>state.resolutions.get(id);
+    const openIssues=c=>c.issues.filter(x=>{const r=resolution(x.id);return !r||r.pending});
+    const closedIssues=c=>c.issues.filter(x=>{const r=resolution(x.id);return r&&!r.pending});
+    const balanceText=c=>c.balance===0?'0 ₽':(c.balance<0?'−':'')+fmt(c.balance);
+    const plural=(n,one,few,many)=>{const value=Math.abs(n)%100,last=value%10;return value>10&&value<20?many:last===1?one:last>=2&&last<=4?few:many};
+    const turns=c=>{const opening=((c.seed%3)-1)*45000;const debit=1500000+c.seed*13500;const credit=opening+debit-c.balance;return{opening,debit,credit,closing:c.balance}};
+    const roleMeta={
+      buyer:{title:'Покупатель',hint:'Контрагент покупает у нас',icon:'↑'},
+      supplier:{title:'Поставщик',hint:'Контрагент поставляет нам',icon:'↓'}
+    };
+    const rolesFor=c=>['buyer','supplier'].filter(role=>c.contracts.some(contract=>contract.role===role));
+    const roleContracts=(c,role)=>c.contracts.filter(contract=>contract.role===role);
+    function ensureScope(c){
+      const roles=rolesFor(c),role=roles.includes(state.activeRoles[c.id])?state.activeRoles[c.id]:roles[0];
+      state.activeRoles[c.id]=role;
+      const contracts=roleContracts(c,role),contract=contracts.find(item=>item.id===state.activeContracts[c.id])||contracts[0];
+      state.activeContracts[c.id]=contract.id;
+      return{role,contract};
+    }
+    const scopeIssues=(c,contractId)=>c.issues.filter(issue=>issue.contract===contractId);
+    const scopeOpenIssues=(c,contractId)=>scopeIssues(c,contractId).filter(issue=>{const r=resolution(issue.id);return!r||r.pending});
+    const scopeClosedIssues=(c,contractId)=>scopeIssues(c,contractId).filter(issue=>{const r=resolution(issue.id);return r&&!r.pending});
+    function contractMetrics(c){
+      const total=turns(c),count=c.contracts.length;
+      if(c.contracts.every(contract=>['opening','debit','credit','matched'].every(key=>Number.isFinite(contract[key]))))return c.contracts.map(contract=>({contract,opening:contract.opening,debit:contract.debit,credit:contract.credit,closing:contract.opening+contract.debit-contract.credit,matched:contract.matched}));
+      const openings=splitAmount(total.opening,count),debits=splitAmount(total.debit,count),credits=splitAmount(total.credit,count),matched=splitAmount(c.matched,count);
+      return c.contracts.map((contract,index)=>({contract,opening:openings[index],debit:debits[index],credit:credits[index],closing:openings[index]+debits[index]-credits[index],matched:matched[index]}));
+    }
+    const metricFor=(c,contractId)=>contractMetrics(c).find(item=>item.contract.id===contractId);
+    function roleMetrics(c,role){
+      const items=contractMetrics(c).filter(item=>item.contract.role===role);
+      return items.reduce((sum,item)=>({opening:sum.opening+item.opening,debit:sum.debit+item.debit,credit:sum.credit+item.credit,closing:sum.closing+item.closing,matched:sum.matched+item.matched}),{opening:0,debit:0,credit:0,closing:0,matched:0});
+    }
+    const actKey=(c,contract)=>`${c.id}:${contract.id}`;
+    const directionMarkup=d=>d==='in'?'<span class="direction in">↓ Входящий</span>':'<span class="direction out">↑ Исходящий</span>';
+    const statusMarkup=c=>{const n=openIssues(c).length;if(n)return`<span class="status ${c.issues.some(x=>['missing_1c','amount','correction'].includes(x.code)&&(!resolution(x.id)||resolution(x.id).pending))?'danger':'warn'}">${n} ${plural(n,'расхождение','расхождения','расхождений')}</span>`;return closedIssues(c).length?'<span class="status ok">Все расхождения обработаны</span>':'<span class="status ok">Расхождений нет</span>'};
+    const issueStatus=x=>{const r=resolution(x.id);if(r?.pending)return'<span class="status warn">Ожидает повторной проверки</span>';if(r)return`<span class="status ok">${esc(r.label)}</span>`;return`<span class="status ${['missing_1c','amount','correction'].includes(x.code)?'danger':'warn'}">${esc(issueNames[x.code])}</span>`};
+
+    function setStatus(text,kind='ok'){
+      document.getElementById('statusText').textContent=text;
+      const marker=document.querySelector('.status-bar .ready');
+      marker.textContent=kind==='error'?'● Ошибка':kind==='busy'?'● Выполняется':'● Готово';
+      marker.style.color=kind==='error'?'#a43b36':kind==='busy'?'#986711':'#2f7d46';
+    }
+    function setTitle(text){document.getElementById('formTabTitle').textContent=text}
+    function setModuleTab(name){
+      document.querySelectorAll('.module-switches button').forEach(b=>b.classList.toggle('active',(name==='report'&&b.dataset.action==='report')||(name!=='report'&&b.dataset.list===name)));
+    }
+    function updateToSendCount(){const count=[...state.createdActs].filter(id=>!state.sentActs.has(id)).length;const node=document.getElementById('toSendCount');if(node)node.textContent=count?`(${count})`:''}
+    function toast(title,note='',kind='ok'){
+      const root=document.getElementById('toastRoot');
+      root.innerHTML=`<div class="toast ${kind==='warn'?'warn':''}"><span class="toast-icon">${kind==='warn'?'!':'✓'}</span><div><b>${esc(title)}</b>${note?`<small>${esc(note)}</small>`:''}</div></div>`;
+      clearTimeout(toast.timer);toast.timer=setTimeout(()=>root.innerHTML='',3200);
+    }
+    function closeOverlay(){overlayRoot.innerHTML='';menuRoot.innerHTML=''}
+    function currentTimestamp(){
+      return new Intl.DateTimeFormat('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date()).replace(',','');
+    }
+    function startSourceCheck(source){
+      if(state.sourceBusy)return;
+      state.sourceBusy=source;renderReport();
+      setStatus(source==='onec'?'Проверяются данные учёта 1С':'Обновляются документы Диадока','busy');
+      setTimeout(()=>{
+        state.sourceBusy=null;state.lastCheck=currentTimestamp();
+        if(state.screen==='report')renderReport();
+        toast(source==='onec'?'Данные 1С проверены':'Документы Диадока проверены','Результаты онлайн-сверки обновлены');
+      },1200);
+    }
+
+    function commonHeading(title,crumb='Контур.Диадок / Онлайн-сверка'){
+      return`<div class="form-heading"><button class="favorite" title="Добавить в избранное">☆</button><h1>${esc(title)}</h1><span class="breadcrumb">${esc(crumb)}</span></div>`;
+    }
+    function paramsMarkup(){
+      return`<div class="params">
+        <div class="field-label">Организация</div><div class="field"><input value="ООО «Вектор Про»" readonly><button class="field-button" data-action="field-info" title="Выбрать организацию">…</button></div>
+        <div class="field-label">Период</div><button class="field" data-action="period" style="padding:0 7px;text-align:left">${esc(state.period)}</button>
+        <div class="field-label">Контрагент</div><div class="field"><input id="counterpartyParam" value="${esc(state.counterpartyFilter)}" placeholder="Название, ИНН или КПП">${state.counterpartyFilter?'<button class="field-button" data-action="clear-counterparty">×</button>':''}<button class="field-button" data-action="choose-counterparty">…</button></div>
+        <div class="params-advanced"><span>Проверяются все договоры выбранного контрагента</span></div>
+      </div>`;
+    }
+    function sourceCheckButton(source){
+      const busy=state.sourceBusy===source;
+      return`<div class="source-action"><button class="cmd" data-action="check-source" data-source="${source}" ${state.sourceBusy?'disabled':''}>${busy?'<span class="inline-spinner" aria-hidden="true"></span> Проверяем…':'Проверить'}</button></div>`;
+    }
+    function dataBlock(){
+      return`<div class="info-group" id="sourceGroup">
+        <div class="info-group-title"><button data-action="toggle-source">${state.sourceOpen?'▼':'▶'}</button><span>Данные проверки</span></div>
+        <div id="sourceGroupBody" class="${state.sourceOpen?'':'hidden'}">
+          <div class="source-state"><div class="label">Данные учёта 1С</div><div>Проведённые документы и движения взаиморасчётов</div>${sourceCheckButton('onec')}</div>
+          <div class="source-state"><div class="label">Документы Диадока</div><div>Формализованные документы и штатные статусы</div>${sourceCheckButton('diadoc')}</div>
+          <div class="source-summary">Данные обновлены и проверены: ${state.lastCheck}</div>
+        </div>
+      </div>`;
+    }
+    function reportRows(list){
+      return list.map(c=>{
+        const t=turns(c),expanded=state.expanded.has(c.id);
+        let html=`<tr data-row-cp="${c.id}"><td><div class="tree-cell"><button class="tree-toggle" data-action="toggle-cp" data-cp="${c.id}">${expanded?'▼':'▶'}</button><button class="company-link" data-action="open-cp" data-cp="${c.id}">${esc(c.name)}</button></div><div class="muted" style="padding-left:23px">ИНН ${c.inn} · КПП ${c.kpp}</div></td><td>${statusMarkup(c)}</td><td class="num">${balanceText({balance:t.opening})}</td><td class="num">${fmt(t.debit)}</td><td class="num">${fmt(t.credit)}</td><td class="num"><b>${balanceText(c)}</b><div class="muted">${esc(c.balanceLabel)}</div></td><td class="center">${c.matched}</td><td class="center"><b>${openIssues(c).length}</b></td></tr>`;
+        if(expanded){
+          rolesFor(c).forEach(role=>{
+            const meta=roleMeta[role],metrics=roleMetrics(c,role),contracts=roleContracts(c,role),issues=c.issues.filter(issue=>contracts.some(contract=>contract.id===issue.contract)),open=issues.filter(issue=>{const r=resolution(issue.id);return!r||r.pending}).length;
+            html+=`<tr class="role-row"><td class="role-indent"><span class="role-badge">${meta.icon} ${meta.title}</span> <span class="muted">${contracts.length} ${plural(contracts.length,'договор','договора','договоров')}</span></td><td>${open?`<span class="status warn">${open} ${plural(open,'расхождение','расхождения','расхождений')}</span>`:'<span class="status ok">Без расхождений</span>'}</td><td class="num">${balanceText({balance:metrics.opening})}</td><td class="num">${fmt(metrics.debit)}</td><td class="num">${fmt(metrics.credit)}</td><td class="num"><b>${balanceText({balance:metrics.closing})}</b></td><td class="center">${metrics.matched}</td><td class="center">${open}</td></tr>`;
+            contracts.forEach(contract=>{
+              const metrics=metricFor(c,contract.id),open=scopeOpenIssues(c,contract.id).length;
+              html+=`<tr class="contract-row"><td class="contract-indent deep">└ <button class="company-link" data-action="open-scope" data-cp="${c.id}" data-role="${role}" data-contract="${contract.id}">${esc(contract.label)}</button></td><td>${open?`<span class="status warn">${open} ${plural(open,'расхождение','расхождения','расхождений')}</span>`:'<span class="status ok">Проверено</span>'}</td><td class="num">${balanceText({balance:metrics.opening})}</td><td class="num">${fmt(metrics.debit)}</td><td class="num">${fmt(metrics.credit)}</td><td class="num"><b>${balanceText({balance:metrics.closing})}</b></td><td class="center">${metrics.matched}</td><td class="center">${open}</td></tr>`;
+            });
+          });
+        }
+        return html;
+      }).join('');
+    }
+    function renderReport(){
+      state.screen='report';state.selected=null;document.getElementById('workspace').classList.remove('inner-form');setTitle('Онлайн-сверка');setModuleTab('report');
+      const q=(state.counterpartyFilter||state.search).trim().toLowerCase();
+      const scope=counterparties.filter(c=>!q||`${c.name} ${c.inn} ${c.kpp}`.toLowerCase().includes(q));
+      const rows=scope.filter(c=>state.filter==='all'||state.filter==='attention'&&openIssues(c).length||state.filter==='ready'&&!openIssues(c).length);
+      const open=scope.reduce((s,c)=>s+openIssues(c).length,0),ready=scope.filter(c=>!openIssues(c).length).length;
+      content.innerHTML=`${commonHeading('Онлайн-сверка')}
+        <div class="command-bar"><button class="cmd" data-action="settings">⚙ Параметры проверки</button><span class="command-separator"></span><button class="cmd flat" data-action="expand-all">Развернуть все</button><button class="cmd flat" data-action="collapse-all">Свернуть все</button></div>
+        ${paramsMarkup()}${dataBlock()}
+        <div class="summary-line"><span class="summary-item">Контрагентов: <b>${scope.length}</b></span><span class="summary-item ok">Без расхождений: <b>${ready}</b></span><span class="summary-item attention">Требуют внимания: <b>${scope.length-ready}</b></span><span class="summary-item attention">Открытых расхождений: <b>${open}</b></span><span class="summary-item period">Период: <b>${esc(state.period)}</b></span></div>
+        <div class="report-tools"><span class="label">Показывать:</span><div class="segment"><button data-filter="all" class="${state.filter==='all'?'active':''}">Все</button><button data-filter="attention" class="${state.filter==='attention'?'active':''}">Требуют внимания</button><button data-filter="ready" class="${state.filter==='ready'?'active':''}">Без расхождений</button></div><label class="mini-search">⌕ <input id="reportSearch" value="${esc(state.search)}" placeholder="Название, ИНН или КПП"></label></div>
+        <div class="table-box"><table class="data-table"><thead><tr><th style="width:29%">Контрагент / роль / договор</th><th style="width:16%">Состояние</th><th class="num">Начальное сальдо</th><th class="num">Дебет</th><th class="num">Кредит</th><th class="num">Конечное сальдо</th><th class="center">Сопоставленные<br>документы</th><th class="center">Расхождения</th></tr></thead><tbody>${rows.length?reportRows(rows):'<tr><td colspan="8" style="height:70px;text-align:center;color:#666">Контрагенты не найдены</td></tr>'}</tbody></table></div>
+        <p class="small-note">Список построен по справочнику контрагентов 1С. Документы Диадока используются как связанные подтверждения и не создают финансовые движения повторно.</p>`;
+      bindSearch();setStatus(`Открытых расхождений: ${open}`);
+    }
+
+    function roleCards(c,activeRole){
+      const roles=rolesFor(c);
+      return`<div class="role-cards ${roles.length===1?'single':''}">${roles.map(role=>{
+        const meta=roleMeta[role],metrics=roleMetrics(c,role),contracts=roleContracts(c,role),issues=c.issues.filter(issue=>contracts.some(contract=>contract.id===issue.contract)),open=issues.filter(issue=>{const r=resolution(issue.id);return!r||r.pending}).length;
+        return`<button class="role-card ${role===activeRole?'active':''}" data-action="set-role" data-role="${role}"><div><h3><span class="role-badge">${meta.icon}</span>${meta.title}</h3><p>${meta.hint}</p><div class="role-metrics"><span>${contracts.length} ${plural(contracts.length,'договор','договора','договоров')}</span><span>${metrics.matched} ${plural(metrics.matched,'сопоставленный документ','сопоставленных документа','сопоставленных документов')}</span><span>${open} ${plural(open,'расхождение','расхождения','расхождений')}</span></div></div><div class="role-balance"><span class="small-note">Конечное сальдо</span><b>${balanceText({balance:metrics.closing})}</b></div></button>`;
+      }).join('')}</div>`;
+    }
+    function detailSummary(c,contract){
+      const metrics=metricFor(c,contract.id),open=scopeOpenIssues(c,contract.id);
+      return`<div class="summary-line"><span class="summary-item">Начальное сальдо: <b>${balanceText({balance:metrics.opening})}</b></span><span class="summary-item">Дебет: <b>${fmt(metrics.debit)}</b></span><span class="summary-item">Кредит: <b>${fmt(metrics.credit)}</b></span><span class="summary-item">Конечное сальдо: <b>${balanceText({balance:metrics.closing})}</b></span><span class="summary-item">${metrics.matched} <b>${plural(metrics.matched,'сопоставленный','сопоставленных','сопоставленных')}</b></span><span class="summary-item ${open.length?'attention':'ok'}">${open.length} <b>${plural(open.length,'расхождение','расхождения','расхождений')}</b></span></div>`;
+    }
+    function renderDetail(c=state.selected){
+      if(!c)return renderReport();state.screen='detail';state.selected=c;document.getElementById('workspace').classList.add('inner-form');setTitle(`Онлайн-сверка: ${c.name}`);setModuleTab('report');
+      const {role,contract}=ensureScope(c),contracts=roleContracts(c,role),open=scopeOpenIssues(c,contract.id),issues=scopeIssues(c,contract.id),meta=roleMeta[role];
+      content.innerHTML=`<button class="back-link" data-action="report">← К списку контрагентов</button>
+        <div class="detail-headline"><div class="detail-title"><h1>${esc(c.name)}</h1><p>ИНН ${c.inn} · КПП ${c.kpp} · договоров: ${c.contracts.length}</p></div>${statusMarkup(c)}</div>
+        <div class="command-bar"><button class="cmd primary" data-action="check">↻ Проверить повторно</button><button class="cmd" data-action="act-tab">▤ Создать формализованный акт</button></div>
+        ${roleCards(c,role)}
+        <div class="compact-fields"><div class="field-label">Организация</div><div class="read-field">ООО «Вектор Про»</div><div class="field-label">Период</div><button class="read-field" data-action="period" style="text-align:left">${esc(state.period)}</button><div class="field-label">Роль КА</div><div class="read-field">${meta.title} — ${meta.hint.toLowerCase()}</div><div class="field-label">Договор</div><div class="read-field contract-choice"><select id="contractChoice" aria-label="Договор">${contracts.map(item=>`<option value="${item.id}" ${item.id===contract.id?'selected':''}>${esc(item.label)}</option>`).join('')}</select></div></div>
+        ${open.length?`<div class="notification"><span class="notification-icon">!</span><div><b>По выбранному договору обнаружено расхождений: ${open.length}</b><p>Модуль не изменяет документы и проводки автоматически. После исправления выполните повторную проверку.</p></div></div>`:`<div class="notification ok"><span class="notification-icon">✓</span><div><b>Данные по договору подготовлены</b><p>Можно создать отдельный акт сверки и передать его в штатный процесс отправки Диадока.</p></div></div>`}
+        ${detailSummary(c,contract)}
+        <div class="form-pages"><button class="page-tab ${state.tab==='discrepancies'?'active':''}" data-tab="discrepancies">Расхождения (${issues.length})</button><button class="page-tab ${state.tab==='journal'?'active':''}" data-tab="journal">Журнал взаиморасчётов</button><button class="page-tab ${state.tab==='act'?'active':''}" data-tab="act">Формализованный акт</button><button class="page-tab ${state.tab==='history'?'active':''}" data-tab="history">История решений</button></div><div class="page-body" id="detailBody"></div>`;
+      renderDetailTab(c);setStatus(c.name);
+    }
+    function renderDetailTab(c){
+      const body=document.getElementById('detailBody');if(!body)return;
+      if(state.tab==='journal')return renderJournal(c,body);
+      if(state.tab==='act')return renderAct(c,body);
+      if(state.tab==='history')return renderHistory(c,body);
+      const {contract}=ensureScope(c),items=scopeIssues(c,contract.id);
+      const rows=items.map(x=>`<tr><td>${issueStatus(x)}</td><td>${directionMarkup(x.direction)}</td><td><button class="doc-link" data-action="open-issue" data-issue="${x.id}">${esc(x.diadoc?`${x.diadoc.type} № ${x.diadoc.number}`:`${x.onec[0].type} № ${x.onec[0].number}`)}</button></td><td>${esc(x.summary)}</td><td>${x.diadoc?x.diadoc.date:'—'}</td><td>${x.onec?.[0]?.date||'—'}</td><td class="num">${fmt(x.impact)}</td><td><button class="inline-action" data-action="open-issue" data-issue="${x.id}">Открыть</button></td></tr>`).join('');
+      body.innerHTML=items.length?`<div class="section-actions"><span>Открыто: <b>${scopeOpenIssues(c,contract.id).length}</b> · обработано: <b>${scopeClosedIssues(c,contract.id).length}</b></span><span class="right small-note">Показаны данные только по договору ${esc(contract.label)}</span></div><div class="table-box"><table class="data-table"><thead><tr><th>Состояние</th><th>Направление</th><th>Документ</th><th style="width:28%">Что обнаружено</th><th>Дата документа<br>Диадока</th><th>Дата отражения<br>в 1С</th><th class="num">Сумма</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`:'<div class="empty-state"><div><b>Расхождений нет</b><p>Операции 1С и связанные документы Диадока по выбранному договору проверены.</p></div></div>';
+    }
+
+    function splitAmount(total,count){
+      const sign=total<0?-1:1,absolute=Math.abs(Math.round(total)),base=Math.floor(absolute/count),remainder=absolute-base*count;
+      return Array.from({length:count},(_,index)=>sign*(base+(index<remainder?1:0)));
+    }
+    function journalData(c){
+      const rows=[];
+      contractMetrics(c).forEach((metrics,index)=>{
+        const contract=metrics.contract;
+        const issueRows=scopeIssues(c,contract.id).map(x=>{
+          const doc=x.onec?.[0],inPeriod=doc&&/\.08\.2026$/.test(doc.date),isFinancial=Boolean(doc&&inPeriod),amount=isFinancial?Math.abs(doc.amount):0;
+          return{contract:contract.id,accountingDate:doc?.date||'—',sourceDate:x.code==='period'&&x.diadoc?x.diadoc.date:doc?.date||x.diadoc?.date||'—',onec:doc?`${doc.type} № ${doc.number}`:'Не найден',onecStatus:doc?.status||'—',diadoc:x.diadoc?`${x.diadoc.type} № ${x.diadoc.number}`:'Не найден',direction:x.direction,ddStatus:x.diadoc?.status||'—',debit:isFinancial&&x.direction==='out'?amount:0,credit:isFinancial&&x.direction==='in'?amount:0,result:resolution(x.id)?.pending?'Ожидает повторной проверки':resolution(x.id)?.label||issueNames[x.code],issueId:x.id,isFinancial};
+        });
+        const issueDebit=issueRows.reduce((sum,row)=>sum+row.debit,0),issueCredit=issueRows.reduce((sum,row)=>sum+row.credit,0),remainingDebit=Math.max(0,metrics.debit-issueDebit),remainingCredit=Math.max(0,metrics.credit-issueCredit);
+        rows.push({contract:contract.id,accountingDate:'01.08.2026',sourceDate:'01.08.2026',onec:'Сальдо на начало периода',onecStatus:'',diadoc:'—',direction:'',ddStatus:'',debit:Math.max(0,metrics.opening),credit:Math.max(0,-metrics.opening),result:'',isFinancial:false});
+        if(remainingDebit){
+          const date=`0${4+index}.08.2026`,supplier=contract.role==='supplier',number=`${c.seed}0${4+index}`;
+          rows.push({contract:contract.id,accountingDate:date,sourceDate:date,onec:supplier?`Списание с расчётного счёта № ${1700+c.seed+index}`:`Реализация (акты, накладные, УПД) № ${number}`,onecStatus:'Проведён',diadoc:supplier?'Не требуется':`УПД № ${number}`,direction:supplier?'':'out',ddStatus:supplier?'':'Документооборот завершён',debit:remainingDebit,credit:0,result:supplier?'':'Сопоставлено',isFinancial:true});
+        }
+        if(remainingCredit){
+          const date=`1${2+index}.08.2026`,supplier=contract.role==='supplier',number=`${c.seed}1${2+index}`;
+          rows.push({contract:contract.id,accountingDate:date,sourceDate:date,onec:supplier?`Поступление (акт, накладная, УПД) № ${number}`:`Поступление на расчётный счёт № ${1700+c.seed+index}`,onecStatus:'Проведён',diadoc:supplier?`УПД № ${number}`:'Не требуется',direction:supplier?'in':'',ddStatus:supplier?'Документооборот завершён':'',debit:0,credit:remainingCredit,result:supplier?'Сопоставлено':'',isFinancial:true});
+        }
+        rows.push(...issueRows);
+      });
+      return rows;
+    }
+    function renderJournal(c,body){
+      const {role,contract}=ensureScope(c),rows=journalData(c).filter(row=>row.contract===contract.id).sort((a,b)=>a.accountingDate.localeCompare(b.accountingDate));
+      const html=rows.map(r=>`<tr><td>${r.accountingDate}</td><td>${r.issueId?`<button class="doc-link" data-action="open-issue" data-issue="${r.issueId}">${esc(r.onec)}</button>`:esc(r.onec)}</td><td>${esc(r.onecStatus)}</td><td>${esc(r.diadoc)}</td><td>${r.direction?directionMarkup(r.direction):'—'}</td><td>${esc(r.ddStatus)}</td><td class="num">${r.debit?num(r.debit):'—'}</td><td class="num">${r.credit?num(r.credit):'—'}</td><td>${r.result?(r.result==='Сопоставлено'?'<span class="status ok">Сопоставлено</span>':`<span class="status warn">${esc(r.result)}</span>`):'—'}</td><td>${r.issueId?`<button class="inline-action" data-action="open-issue" data-issue="${r.issueId}">Открыть</button>`:''}</td></tr>`).join('');
+      body.innerHTML=`<div class="section-actions"><button class="cmd" data-action="export">Сохранить в файл</button><span class="right small-note">${roleMeta[role].title} · договор ${esc(contract.label)} · финансовый эффект по проведённым операциям 1С</span></div><div class="table-box"><table class="data-table"><thead><tr><th>Дата отражения<br>в 1С</th><th>Документ/операция 1С</th><th>Статус 1С</th><th>Связанный документ Диадока</th><th>Направление</th><th>Статус Диадока</th><th class="num">Дебет</th><th class="num">Кредит</th><th>Результат</th><th></th></tr></thead><tbody>${html}</tbody></table></div>`;
+    }
+
+    function actDocument(row){
+      const [rawType,number='']=row.onec.split(' № '),type=rawType.replace(/\s*\([^)]*\)/g,'').trim();
+      return`${type}${number?` № ${number}`:''} от ${row.sourceDate}`;
+    }
+    function actRows(c,contractId){
+      return journalData(c).filter(row=>row.contract===contractId&&row.isFinancial).sort((a,b)=>a.accountingDate.localeCompare(b.accountingDate)).map(row=>({date:row.accountingDate,doc:actDocument(row),debit:row.debit,credit:row.credit}));
+    }
+    function renderAct(c,body){
+      const {role,contract}=ensureScope(c),metrics=metricFor(c,contract.id),key=actKey(c,contract),created=state.createdActs.has(key),sent=state.sentActs.has(key),rows=actRows(c,contract.id),open=scopeOpenIssues(c,contract.id),beneficiary=metrics.closing>=0?'ООО «Вектор Про»':c.name,[periodFrom,periodTo]=state.period.split(' — ');
+      body.innerHTML=`<div class="section-actions"><span class="small-note">Предварительный просмотр акта по выбранному договору</span><span class="right">${sent?'<span class="status ok">Отправлен</span>':created?'<span class="status ok">Создан в 1С</span>':'<span class="status neutral">Не создан</span>'}</span></div>
+        <div class="notification ${open.length?'':'ok'}"><span class="notification-icon">${open.length?'!':'✓'}</span><div><b>${open.length?`Открытых расхождений по договору: ${open.length}`:'Данные по договору готовы к формированию'}</b><p>Ответ контрагента и двусторонний протокол разногласий не входят в первую версию.</p></div></div>
+        <div class="act-workspace">
+          <article class="formal-act" id="formalAct"><div class="doc-kind">Формализованный акт сверки · первый титул</div><h2>Акт сверки</h2><div class="act-period">взаимных расчётов за период: ${periodFrom} — ${periodTo}</div><div class="act-between">между ООО «Вектор Про» (ИНН 6671098765) и ${esc(c.name)} (ИНН ${c.inn})</div><div class="act-contract">по договору ${esc(contract.label)} · контрагент — ${roleMeta[role].title.toLowerCase()}</div>
+            <p class="act-intro">Мы, нижеподписавшиеся, составили настоящий акт сверки о том, что состояние взаимных расчётов по данным учёта следующее:</p>
+            <table><thead><tr><th colspan="4" class="side-title">По данным ООО «Вектор Про», руб.</th><th colspan="4" class="side-title">По данным ${esc(c.name)}, руб.</th></tr><tr><th class="date-col">Дата</th><th class="doc-col">Документ</th><th class="sum-col">Дебет</th><th class="sum-col">Кредит</th><th class="date-col">Дата</th><th class="doc-col">Документ</th><th class="sum-col">Дебет</th><th class="sum-col">Кредит</th></tr></thead><tbody><tr><td>${periodFrom}</td><td><b>Сальдо начальное</b></td><td class="num">${metrics.opening>0?num(metrics.opening):''}</td><td class="num">${metrics.opening<0?num(metrics.opening):''}</td><td>${periodFrom}</td><td><b>Сальдо начальное</b></td><td></td><td></td></tr>${rows.map((r,index)=>`<tr><td>${r.date}</td><td>${esc(r.doc)}</td><td class="num">${r.debit?num(r.debit):''}</td><td class="num">${r.credit?num(r.credit):''}</td>${index===0?`<td colspan="4" rowspan="${Math.max(1,rows.length)}" class="counterparty-empty">Заполняется контрагентом</td>`:''}</tr>`).join('')}<tr class="total"><td colspan="2">Обороты за период</td><td class="num">${num(metrics.debit)}</td><td class="num">${num(metrics.credit)}</td><td colspan="2">Обороты за период</td><td></td><td></td></tr><tr class="total"><td colspan="2">Сальдо конечное на ${periodTo}</td><td colspan="2" class="num">${balanceText({balance:metrics.closing})}</td><td colspan="2">Сальдо конечное на ${periodTo}</td><td colspan="2"></td></tr></tbody></table>
+            <p class="act-result">По данным ООО «Вектор Про» задолженность в пользу <b>${esc(beneficiary)}</b> составляет <b>${fmt(metrics.closing)}</b>.</p>
+            <div class="signature-block"><div class="signature-side"><b>ООО «Вектор Про»</b><div class="signature-line">Ответственное лицо / электронная подпись</div></div><div class="signature-side"><b>${esc(c.name)}</b><div class="signature-line">Ответственное лицо / электронная подпись</div></div></div>
+          </article>
+          <aside class="send-panel"><h3>Подготовка документа</h3><dl><dt>Организация</dt><dd>ООО «Вектор Про»</dd><dt>Контрагент</dt><dd>${esc(c.name)}</dd><dt>Роль КА</dt><dd>${roleMeta[role].title}</dd><dt>Период</dt><dd>${esc(state.period)}</dd><dt>Договор</dt><dd>${esc(contract.label)}</dd><dt>Формат</dt><dd>Формализованный акт</dd><dt>Статус</dt><dd>${sent?'Отправлен':created?'Создан, не отправлен':'Черновик'}</dd></dl>${!created?'<button class="cmd primary" data-action="create-act">Создать формализованный акт</button>':`<button class="cmd" data-action="open-act">Открыть акт в 1С</button><button class="cmd" data-action="print-act">Печать</button>${sent?'':'<button class="cmd primary" data-action="prepare-send">Подписать и отправить</button>'}`}</aside>
+        </div>`;
+    }
+    function renderHistory(c,body){
+      const {contract}=ensureScope(c),items=scopeIssues(c,contract.id),metrics=metricFor(c,contract.id);
+      const base=[{time:state.lastCheck,action:'Выполнена проверка',detail:`Сопоставленных документов: ${metrics.matched}`},...items.map((x,i)=>({time:`01.09.2026 09:${String(43-i).padStart(2,'0')}`,action:'Обнаружено расхождение',detail:`${issueNames[x.code]} · ${x.diadoc?x.diadoc.number:x.onec[0]?.number}`}))];
+      const rows=[...(state.history[c.id]||[]).filter(item=>!item.contract||item.contract===contract.id),...base];
+      body.innerHTML=`<div class="section-actions"><span class="small-note">История по договору ${esc(contract.label)}</span></div><div class="table-box"><table class="data-table"><thead><tr><th>Дата и время</th><th>Действие</th><th>Описание</th><th>Пользователь</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.time}</td><td>${esc(r.action)}</td><td>${esc(r.detail)}</td><td>Дарья Крылова</td></tr>`).join('')}</tbody></table></div><p class="small-note">Решения пользователя сохраняются внутри модуля. Документы и проводки 1С автоматически не изменяются.</p>`;
+    }
+
+    function sourceFields(doc,side){
+      if(!doc)return'';
+      const label=side==='dd'?'Статус Диадока':'Статус 1С',dateLabel=side==='dd'?'Дата документа':'Дата отражения в 1С';
+      return`<div class="key">Тип документа</div><div>${esc(doc.type)}</div><div class="key">Номер</div><div>${esc(doc.number)}</div><div class="key">${dateLabel}</div><div>${esc(doc.date)}</div><div class="key">Сумма</div><div><b>${doc.amount<0?'−':''}${fmt(doc.amount)}</b></div><div class="key">${label}</div><div>${esc(doc.status)}</div>`;
+    }
+    function effectiveDocs(x,side){const link=state.links.get(x.id);if(link?.side===side)return link.docs;return side==='onec'?(x.onec||[]):x.diadoc?[x.diadoc]:[]}
+    function sourceCard(x,side){
+      const isDD=side==='dd',docs=effectiveDocs(x,isDD?'dd':'onec'),title=isDD?'Диадок':'1С',missing=!docs.length;
+      if(missing)return`<section class="source-card"><div class="source-head">${title}</div><div class="source-empty"><div><b>${isDD?'Связанный документ Диадока не найден':'Документ учёта 1С не найден'}</b><p>${isDD?'Документ мог быть бумажным, неформализованным или находиться вне Диадока.':'Автоматическое сопоставление не найдено. Проверьте документы учёта 1С.'}</p></div></div><div class="source-actions"><button class="cmd" data-action="open-source-list" data-side="${isDD?'dd':'onec'}">${isDD?'Открыть документы Диадока':'Открыть документы 1С'}</button></div></section>`;
+      return`<section class="source-card"><div class="source-head">${title}</div>${docs.map((d,i)=>`<div class="source-body">${sourceFields(d,isDD?'dd':'onec')}</div>${i<docs.length-1?'<div style="border-top:3px solid #d8dade"></div>':''}`).join('')}<div class="source-actions"><button class="cmd" data-action="open-source" data-side="${isDD?'dd':'onec'}">Открыть ${isDD?'документ Диадока':'документ 1С'}</button></div></section>`;
+    }
+    function contextualActions(x){
+      if(x.code==='missing_1c')return'<button class="inline-action" data-action="open-source-list" data-side="onec">Открыть документы 1С</button> и проверить, создан и проведён ли документ учёта.';
+      if(x.code==='missing_diadoc')return'<button class="inline-action" data-action="open-source-list" data-side="dd">Проверить документы Диадока</button>; документ может находиться вне Диадока.';
+      if(x.code==='amount')return'Проверить, какая сумма верна. Если верны данные 1С — оформить исправленный документ, УКД или аннулирование в Диадоке; если верен подписанный документ — <button class="inline-action" data-action="open-source" data-side="onec">исправить документ в 1С</button>.';
+      if(x.code==='period')return'Проверить дату отражения в 1С. Если перенос периода корректен, выбрать «Расхождение допустимо».';
+      if(x.code==='unsigned')return'<button class="inline-action" data-action="open-source" data-side="dd">Перейти к документу Диадока</button> и проверить подписание.';
+      return'<button class="inline-action" data-action="open-source" data-side="onec">Проверить корректировку в 1С</button> и связанный УКД.';
+    }
+    function openIssue(id){
+      const found=getIssue(id);if(!found)return;const{c,issue:x}=found,r=resolution(id);
+      overlayRoot.innerHTML=`<div class="overlay"><section class="dialog" role="dialog" aria-modal="true"><header class="dialog-title"><h2>${esc(issueNames[x.code])}</h2><button class="dialog-close" data-action="close">×</button></header><div class="dialog-body">
+        <dl class="issue-summary"><dt>Контрагент</dt><dd>${esc(c.name)}</dd><dt>Роль КА</dt><dd>${roleMeta[c.contracts.find(contract=>contract.id===x.contract)?.role]?.title||'—'}</dd><dt>Договор</dt><dd>${esc(getContract(c,x.contract))}</dd><dt>Направление</dt><dd>${directionMarkup(x.direction)}</dd><dt>Что обнаружено</dt><dd>${esc(x.summary)}</dd><dt>Что сделать</dt><dd class="action-cell">${contextualActions(x)}</dd></dl>
+        <div class="compare-grid">${sourceCard(x,'dd')}${sourceCard(x,'onec')}</div>
+        ${r?`<div class="result-box ${r.pending?'pending':''}" style="margin-top:9px"><b>${esc(r.pending?'Ожидает повторной проверки':r.label)}</b><p>${esc(r.comment)}</p><small>Дарья Крылова · ${r.at}</small></div>`:`<div style="margin-top:9px"><label class="comment-label" for="resolutionComment">Комментарий ${x.code==='period'?'':'к решению'}</label><textarea id="resolutionComment" placeholder="Для допустимого расхождения укажите основание"></textarea><div class="validation" id="commentValidation"></div></div>`}
+        </div><footer class="dialog-footer"><span class="footer-note">Решение сохранится в истории. Документы 1С автоматически не изменяются.</span>${r?`${r.pending?'<button class="cmd primary" data-action="check">Выполнить повторную проверку</button>':''}<button class="cmd" data-action="reopen" data-issue="${x.id}">Вернуть в работу</button>`:`<button class="cmd" data-action="resolve" data-type="acceptable" data-issue="${x.id}">Расхождение допустимо</button><button class="cmd primary" data-action="resolve" data-type="fixed" data-issue="${x.id}">Исправлено</button>`}<button class="cmd" data-action="close">Закрыть</button></footer></section></div>`;
+    }
+    function resolveIssue(id,type){
+      const found=getIssue(id);if(!found)return;const comment=document.getElementById('resolutionComment')?.value.trim()||'';
+      if(type==='acceptable'&&!comment){const v=document.getElementById('commentValidation');v.textContent='Укажите, почему расхождение допустимо.';v.classList.add('visible');document.getElementById('resolutionComment').classList.add('error');return}
+      const label=type==='fixed'?'Исправлено':'Расхождение допустимо',saved=comment||(type==='fixed'?'Пользователь отметил исправление. Нужна повторная проверка.':'Допустимое расхождение подтверждено.');
+      state.resolutions.set(id,{label,comment:saved,pending:type==='fixed',at:'01.09.2026 10:12'});
+      state.history[found.c.id]=state.history[found.c.id]||[];state.history[found.c.id].unshift({time:'01.09.2026 10:12',action:label,detail:`${issueNames[found.issue.code]}: ${saved}`,contract:found.issue.contract});
+      closeOverlay();renderDetail(found.c);toast(label,'Решение сохранено в истории');
+    }
+
+    function openSettings(){
+      overlayRoot.innerHTML=`<div class="overlay"><section class="dialog small"><header class="dialog-title"><h2>Параметры проверки</h2><button class="dialog-close" data-action="close">×</button></header><div class="dialog-body"><p style="margin-bottom:8px">В первой версии состав проверок фиксирован и не изменяется пользователем.</p><div class="check-list">${['Сопоставление документов 1С и Диадока','Проверка сумм','Проверка дат и периодов отражения','Проверка штатных статусов Диадока','Исправления и корректировки','Оплаты, возвраты, взаимозачёты и сторно из 1С'].map(x=>`<div class="check-row"><span class="check-mark">✓</span><span>${x}</span><span class="check-status">Проверяется</span></div>`).join('')}</div><p class="small-note">Подразделения, склады и объекты расчётов учитываются по данным 1С.</p></div><footer class="dialog-footer"><button class="cmd primary" data-action="close">Закрыть</button></footer></section></div>`;
+    }
+    function openPeriod(){
+      overlayRoot.innerHTML=`<div class="overlay"><section class="dialog small"><header class="dialog-title"><h2>Период проверки</h2><button class="dialog-close" data-action="close">×</button></header><div class="dialog-body"><div class="compact-fields" style="grid-template-columns:90px 1fr"><div class="field-label">Дата начала</div><div class="field"><input id="periodFrom" value="01.08.2026"></div><div class="field-label">Дата окончания</div><div class="field"><input id="periodTo" value="31.08.2026"></div></div><div class="notification"><span class="notification-icon">!</span><div><b>Период не ограничен</b><p>Проверка большого объёма документов может занять больше времени.</p></div></div></div><footer class="dialog-footer"><button class="cmd" data-action="close">Отмена</button><button class="cmd primary" data-action="apply-period">Применить</button></footer></section></div>`;
+    }
+    function openProgress(){
+      const steps=['Получение изменений из Диадока','Чтение проведённых операций 1С','Сопоставление документов','Расчёт сальдо и расхождений'];
+      overlayRoot.innerHTML=`<div class="overlay"><section class="dialog small"><header class="dialog-title"><h2>Проверка взаиморасчётов</h2><button class="dialog-close" data-action="close">×</button></header><div class="dialog-body"><p>Модуль обновит документы и статусы Диадока, прочитает операции 1С и пересчитает результаты.</p><div class="sync-steps">${steps.map((x,i)=>`<div class="sync-step" data-step="${i}"><span class="step-icon">${i+1}</span><div><b>${x}</b><small>Ожидает выполнения</small></div></div>`).join('')}</div><div class="progress"><i id="syncProgress"></i></div><p class="small-note" id="syncNote">Операция ещё не запущена</p></div><footer class="dialog-footer"><button class="cmd flat" data-action="show-error">Показать состояние ошибки</button><button class="cmd" data-action="close">Отмена</button><button class="cmd primary" data-action="start-progress" id="startProgress">Начать</button></footer></section></div>`;
+    }
+    function startProgress(){
+      const steps=[...document.querySelectorAll('.sync-step')],bar=document.getElementById('syncProgress'),note=document.getElementById('syncNote'),btn=document.getElementById('startProgress');btn.disabled=true;btn.textContent='Выполняется…';setStatus('Выполняется проверка','busy');
+      steps.forEach((step,i)=>setTimeout(()=>{steps.forEach(s=>s.classList.remove('processing'));step.classList.add('processing');step.querySelector('small').textContent='Выполняется';bar.style.width=`${Math.round((i+.65)/steps.length*100)}%`;if(i) {steps[i-1].classList.remove('processing');steps[i-1].classList.add('done');steps[i-1].querySelector('.step-icon').textContent='✓';steps[i-1].querySelector('small').textContent='Выполнено'}},i*500));
+      setTimeout(()=>{const last=steps.at(-1);last.classList.remove('processing');last.classList.add('done');last.querySelector('.step-icon').textContent='✓';last.querySelector('small').textContent='Выполнено';bar.style.width='100%';note.innerHTML='<span class="state-ok">✓ Операция успешно завершена</span>';btn.textContent='Закрыть';btn.disabled=false;btn.dataset.action='finish-progress'},steps.length*500+250);
+    }
+    function showProgressError(){
+      overlayRoot.innerHTML=`<div class="overlay"><section class="dialog small"><header class="dialog-title"><h2>Проверка не выполнена</h2><button class="dialog-close" data-action="close">×</button></header><div class="dialog-body"><div class="notification danger"><span class="notification-icon">!</span><div><b>Не удалось получить данные</b><p>Проверьте подключение и повторите операцию. Ранее рассчитанные результаты сохранены.</p></div></div></div><footer class="dialog-footer"><button class="cmd" data-action="close">Закрыть</button><button class="cmd primary" data-action="retry-progress">Повторить</button></footer></section></div>`;setStatus('Последняя операция завершилась ошибкой','error');
+    }
+    function finishProgress(){
+      state.lastCheck=currentTimestamp();state.resolutions.forEach(r=>{if(r.pending)r.pending=false});
+      closeOverlay();state.screen==='detail'?renderDetail(state.selected):renderReport();toast('Проверка завершена','Исправленные расхождения перепроверены');
+    }
+    function counterpartyChooser(){
+      overlayRoot.innerHTML=`<div class="overlay"><section class="dialog"><header class="dialog-title"><h2>Выбор контрагента из справочника 1С</h2><button class="dialog-close" data-action="close">×</button></header><div class="dialog-body"><label class="choice-search">⌕ <input id="choiceSearch" placeholder="Название, ИНН или КПП"></label><div class="choice-table-box"><table class="data-table"><thead><tr><th>Контрагент</th><th>ИНН</th><th>КПП</th><th>Договоров</th><th></th></tr></thead><tbody><tr data-choice-row data-search="все контрагенты"><td><b>Все контрагенты</b></td><td>—</td><td>—</td><td>—</td><td><button class="inline-action" data-action="select-cp" data-cp="all">Выбрать</button></td></tr>${counterparties.map(c=>`<tr data-choice-row data-search="${esc(`${c.name} ${c.inn} ${c.kpp}`.toLowerCase())}"><td>${esc(c.name)}</td><td>${c.inn}</td><td>${c.kpp}</td><td>${c.contracts.length}</td><td><button class="inline-action" data-action="select-cp" data-cp="${c.id}">Выбрать</button></td></tr>`).join('')}</tbody></table></div></div><footer class="dialog-footer"><button class="cmd" data-action="close">Отмена</button></footer></section></div>`;
+    }
+    function prepareSend(c){const {contract}=ensureScope(c);state.sentActs.add(actKey(c,contract));renderDetail(c);toast('Акт подписан и отправлен',`Договор ${contract.label}`)}
+    function bindSearch(){document.getElementById('reportSearch')?.addEventListener('input',e=>{state.search=e.target.value;renderReport()});document.getElementById('counterpartyParam')?.addEventListener('change',e=>{state.counterpartyFilter=e.target.value;renderReport()})}
+
+    document.addEventListener('click',e=>{
+      const target=e.target.closest('[data-action]');if(!target)return;const action=target.dataset.action;
+      if(action==='close')return closeOverlay();
+      if(action==='report')return renderReport();
+      if(action==='open-cp'){const c=getCounterparty(target.dataset.cp);if(target.dataset.tabTarget)state.tab=target.dataset.tabTarget;return renderDetail(c)}
+      if(action==='open-scope'){const c=getCounterparty(target.dataset.cp);state.activeRoles[c.id]=target.dataset.role;state.activeContracts[c.id]=target.dataset.contract;return renderDetail(c)}
+      if(action==='set-role'){const c=state.selected,role=target.dataset.role;state.activeRoles[c.id]=role;state.activeContracts[c.id]=roleContracts(c,role)[0].id;return renderDetail(c)}
+      if(action==='toggle-cp'){const id=target.dataset.cp;state.expanded.has(id)?state.expanded.delete(id):state.expanded.add(id);return renderReport()}
+      if(action==='expand-all'){counterparties.forEach(c=>state.expanded.add(c.id));return renderReport()}
+      if(action==='collapse-all'){state.expanded.clear();return renderReport()}
+      if(action==='toggle-contract'){const key=target.dataset.key;state.expandedContracts.has(key)?state.expandedContracts.delete(key):state.expandedContracts.add(key);return renderDetail(state.selected)}
+      if(action==='toggle-source'){state.sourceOpen=!state.sourceOpen;return renderReport()}
+      if(action==='settings')return openSettings();
+      if(action==='period')return openPeriod();
+      if(action==='apply-period'){const from=document.getElementById('periodFrom').value,to=document.getElementById('periodTo').value;state.period=`${from} — ${to}`;closeOverlay();return state.screen==='detail'?renderDetail(state.selected):renderReport()}
+      if(action==='choose-counterparty')return counterpartyChooser();
+      if(action==='select-cp'){const c=getCounterparty(target.dataset.cp);state.counterpartyFilter=c?c.name:'';closeOverlay();return renderReport()}
+      if(action==='clear-counterparty'){state.counterpartyFilter='';return renderReport()}
+      if(action==='check-source')return startSourceCheck(target.dataset.source);
+      if(action==='check')return openProgress();
+      if(action==='start-progress')return startProgress();
+      if(action==='finish-progress')return finishProgress();
+      if(action==='show-error')return showProgressError();
+      if(action==='retry-progress')return openProgress();
+      if(action==='open-issue')return openIssue(target.dataset.issue);
+      if(action==='resolve')return resolveIssue(target.dataset.issue,target.dataset.type);
+      if(action==='reopen'){const found=getIssue(target.dataset.issue);state.resolutions.delete(target.dataset.issue);closeOverlay();return renderDetail(found.c)}
+      if(action==='act-tab'){state.tab='act';return renderDetail(state.selected)}
+      if(action==='create-act'){const c=state.selected,{contract}=ensureScope(c);state.createdActs.add(actKey(c,contract));renderDetail(c);return toast('Формализованный акт создан',`Договор ${contract.label}`)}
+      if(action==='prepare-send')return prepareSend(state.selected);
+      if(action==='print-act')return window.print();
+      if(action==='open-act')return toast('Открывается документ 1С','Формализованный акт сверки');
+      if(action==='open-source')return toast(target.dataset.side==='dd'?'Открывается документ Диадока':'Открывается документ 1С','Переход выполняется в текущей информационной базе');
+      if(action==='open-source-list')return toast(target.dataset.side==='dd'?'Открывается список документов Диадока':'Открывается стандартный список документов 1С','Отбор установлен по контрагенту, договору и периоду');
+      if(action==='request-correction')return toast('Создаётся запрос на корректировку','Действие продолжится в карточке документа Диадока');
+      if(action==='export')return toast('Журнал сохранён','Файл подготовлен по текущему отбору');
+      if(action==='field-info')return toast('Выбор организации','Открывается стандартная форма выбора 1С');
+      if(action==='plugins')return toast('Плагины модуля Диадока');
+      if(action==='external-nav')return toast(`Открывается раздел «${target.dataset.section}»`,'В прототипе подробно проработан сценарий онлайн-сверки');
+      if(action==='global-menu')return toast('Главное меню 1С');
+      if(action==='toast-help')return toast('Справка по онлайн-сверке','Проверка своей позиции и формирование формализованного акта');
+      if(action==='toast-notifications')return toast('Оповещения',`${counterparties.filter(c=>openIssues(c).length).length} контрагентов требуют внимания`,'warn');
+      if(action==='toast-user')return toast('Текущий пользователь','Дарья Крылова · ООО «Вектор Про»');
+    });
+    document.addEventListener('click',e=>{const tab=e.target.closest('[data-tab]');if(tab){state.tab=tab.dataset.tab;renderDetail(state.selected)}const filter=e.target.closest('[data-filter]');if(filter){state.filter=filter.dataset.filter;renderReport()}});
+    document.addEventListener('change',e=>{if(e.target.id==='contractChoice'&&state.selected){state.activeContracts[state.selected.id]=e.target.value;renderDetail(state.selected)}});
+    document.addEventListener('dblclick',e=>{const row=e.target.closest('[data-row-cp]');if(row)renderDetail(getCounterparty(row.dataset.rowCp))});
+    document.addEventListener('input',e=>{if(e.target.id==='choiceSearch'){const q=e.target.value.trim().toLowerCase();document.querySelectorAll('[data-choice-row]').forEach(r=>r.hidden=q&&!r.dataset.search.includes(q))}});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')closeOverlay()});
+
+    updateToSendCount();renderReport();
+  })();
+  </script>
+</body>
+</html>
